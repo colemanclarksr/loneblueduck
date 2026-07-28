@@ -5,21 +5,16 @@
 //   - indexes on tenantId, status, createdAt, customerId, vehicleId
 //   - no raw cardholder data anywhere; processor references only
 //
-// ONE DEVIATION FROM §10, FLAGGED FOR YOUR DECISION
-// -------------------------------------------------
-// §10 lists `estimates`, `repair_orders` and `invoices` as three tables.
-// This implements them as ONE `Ticket` table with a status, because:
-//   - §6.1 and §7 both describe the same thing as a status flow, so the
-//     blueprint is not self-consistent here
-//   - three tables means copying line items twice per job, and every copy is
-//     a chance for the invoice total to disagree with what the customer
-//     approved -- the single worst bug this product could ship
-//   - "convert estimate to RO" becomes a status change, which is why the shop
-//     never re-keys anything
-// The one real advantage of separate tables -- an invoice being a frozen legal
-// document -- is preserved by snapshotting the ticket at finalisation
-// (invoiceSnapshotJson below) rather than by splitting the table.
-// If you want the three-table version instead, say so; it is one migration.
+// Estimates, repair orders and invoices are three separate tables, per §10.
+// Line items are polymorphic across all three (parentType + parentId), also
+// per §10, which means line items are COPIED at each conversion.
+//
+// That copying is the one dangerous thing in this design: if a copy is partial
+// or a total is recomputed from different inputs, the invoice stops matching
+// what the customer approved. Every conversion therefore goes through
+// lib/convert.ts, which copies verbatim inside a transaction and refuses to
+// commit if the copied totals do not equal the source totals. Do not write
+// conversions by hand anywhere else.
 
 generator client {
   provider = "prisma-client-js"
@@ -29,8 +24,7 @@ generator client {
 datasource db {
   // SQLite locally so there is no server to run. Blueprint §9 specifies
   // Postgres for production: change this to "postgresql" and point
-  // DATABASE_URL at the server. No model changes required -- Prisma promotes
-  // the emulated enums below to native Postgres enums automatically.
+  // DATABASE_URL at the server. No model changes required.
   provider = "sqlite"
 }
 
@@ -54,7 +48,10 @@ model Tenant {
   memberships         Membership[]
   customers           Customer[]
   vehicles            Vehicle[]
-  tickets             Ticket[]
+  estimates           Estimate[]
+  repairOrders        RepairOrder[]
+  invoices            Invoice[]
+  lineItems           LineItem[]
   payments            Payment[]
   refunds             Refund[]
   inventoryItems      InventoryItem[]
@@ -64,28 +61,31 @@ model Tenant {
   messages            Message[]
   auditLogs           AuditLog[]
   servicePackages     ServicePackage[]
+  attachments         Attachment[]
+  notes               Note[]
 }
 
 model Location {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  city      String?
-  state     String?
-  zip       String?
-  // Defaults a new ticket inherits. Blueprint §7 Admin.
-  laborRateCents Int  @default(12500)
-  taxRate        Float @default(0)
-  // Printed at the bottom of every receipt.
+  id             String  @id @default(cuid())
+  tenantId       String
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  // Defaults a new document inherits. Blueprint §7 Admin.
+  laborRateCents Int     @default(12500)
+  taxRate        Float   @default(0)
   receiptFooter  String?
-  createdAt DateTime @default(now())
+  createdAt      DateTime @default(now())
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships Membership[]
-  tickets     Ticket[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
 
   @@index([tenantId])
 }
@@ -103,15 +103,15 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  memberships    Membership[]
-  assignedJobs   Job[]
-  authoredTickets Ticket[]        @relation("TicketAuthor")
-  advisedTickets  Ticket[]        @relation("TicketAdvisor")
-  notes          Note[]
-  auditLogs      AuditLog[]
-  movements      InventoryMovement[]
+  memberships     Membership[]
+  advisedOrders   RepairOrder[]      @relation("ROAdvisor")
+  assignedOrders  RepairOrder[]      @relation("ROTechnician")
+  authoredEstimates Estimate[]       @relation("EstimateAuthor")
+  notes           Note[]
+  auditLogs       AuditLog[]
+  movements       InventoryMovement[]
   approvedRefunds Refund[]
-  statusEvents   TicketEvent[]
+  orderEvents     RepairOrderEvent[]
 }
 
 // Blueprint §5.
@@ -125,17 +125,16 @@ enum Role {
 }
 
 model Membership {
-  id         String   @id @default(cuid())
-  tenantId   String
-  userId     String
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String
   // Null means access to every location in the tenant.
-  locationId String?
-  role       Role     @default(TECHNICIAN)
-  active     Boolean  @default(true)
-  // What the tech costs per hour. Drives job profitability; never exposed to
-  // TECHNICIAN or COUNTER_CLERK.
+  locationId      String?
+  role            Role     @default(TECHNICIAN)
+  active          Boolean  @default(true)
+  // Never exposed to TECHNICIAN or COUNTER_CLERK.
   hourlyCostCents Int?
-  createdAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -155,35 +154,36 @@ enum CustomerType {
 }
 
 model Customer {
-  id        String       @id @default(cuid())
-  tenantId  String
-  type      CustomerType @default(RETAIL)
-  // Company name for FLEET/WHOLESALE; person name for RETAIL.
-  firstName String?
-  lastName  String?
-  company   String?
-  phone     String?
-  email     String?
-  address   String?
-  city      String?
-  state     String?
-  zip       String?
+  id               String       @id @default(cuid())
+  tenantId         String
+  type             CustomerType @default(RETAIL)
+  firstName        String?
+  lastName         String?
+  company          String?
+  phone            String?
+  email            String?
+  address          String?
+  city             String?
+  state            String?
+  zip              String?
   // Net terms in days for fleet accounts. Null = due on receipt.
   billingTermsDays Int?
-  taxExempt        Boolean @default(false)
+  taxExempt        Boolean      @default(false)
   taxExemptId      String?
-  // Blueprint §7: communication opt-in/out, checked before every send.
-  smsOptOut   Boolean @default(false)
-  emailOptOut Boolean @default(false)
-  tags        String?
-  notes       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // §7: communication opt-in/out, checked before every send.
+  smsOptOut        Boolean      @default(false)
+  emailOptOut      Boolean      @default(false)
+  tags             String?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vehicles Vehicle[]
-  tickets  Ticket[]
-  messages Message[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
+  messages     Message[]
 
   @@index([tenantId])
   @@index([tenantId, lastName])
@@ -192,28 +192,30 @@ model Customer {
 }
 
 model Vehicle {
-  id         String  @id @default(cuid())
-  tenantId   String
-  customerId String
-  vin        String?
-  plate      String?
-  year       Int?
-  make       String?
-  model      String?
-  trim       String?
-  engine     String?
-  color      String?
-  tireSize   String?
-  // Latest known reading. Per-visit readings live on the ticket.
-  mileage    Int?
+  id            String   @id @default(cuid())
+  tenantId      String
+  customerId    String
+  vin           String?
+  plate         String?
+  year          Int?
+  make          String?
+  model         String?
+  trim          String?
+  engine        String?
+  color         String?
+  tireSize      String?
+  // Latest known reading. Per-visit readings live on the document.
+  mileage       Int?
   warrantyNotes String?
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  tickets  Ticket[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
 
   @@index([tenantId])
   @@index([customerId])
@@ -221,128 +223,199 @@ model Vehicle {
   @@index([plate])
 }
 
-// ==================================================== estimate / RO / invoice
+// ============================================================ documents
+// Three tables, per §10. Line items are polymorphic across all three.
 
-enum TicketStatus {
-  ESTIMATE    // being built
-  SENT        // approval link out, waiting on customer
-  APPROVED    // customer said yes
-  IN_PROGRESS // tech working
-  COMPLETE    // work done, not invoiced
-  INVOICED    // finalised, balance due
-  PAID        // closed
-  DECLINED    // customer said no
-  VOID        // written off
+// Which table a line item, attachment or note belongs to.
+enum DocType {
+  ESTIMATE
+  REPAIR_ORDER
+  INVOICE
 }
 
-model Ticket {
-  id         String       @id @default(cuid())
+enum EstimateStatus {
+  DRAFT
+  SENT       // approval link out
+  APPROVED   // customer said yes
+  DECLINED   // customer said no
+  EXPIRED
+  CONVERTED  // became a repair order
+}
+
+model Estimate {
+  id         String         @id @default(cuid())
   tenantId   String
   locationId String?
-  // Sequential per tenant, shown to humans as "RO #1042".
   number     Int
   customerId String
   vehicleId  String
   authorId   String?
-  advisorId  String?
-  status     TicketStatus @default(ESTIMATE)
+  status     EstimateStatus @default(DRAFT)
 
   mileageIn    Int?
-  // The customer's own words.
   complaint    String?
-  // Printed for the customer.
   customerNote String?
-  // Never printed, never sent.
   internalNote String?
-  promisedAt   DateTime?
 
-  // Money in integer cents. Denormalised from line items on every write so
-  // list screens never have to aggregate.
+  // Integer cents, denormalised from line items on every write.
   subtotalCents Int   @default(0)
   discountPct   Float @default(0)
   discountCents Int   @default(0)
   taxRate       Float @default(0)
   taxCents      Int   @default(0)
   totalCents    Int   @default(0)
-  paidCents     Int   @default(0)
 
-  // Set once, at finalisation. Frozen copy of line items and totals so an
-  // invoice cannot change after the customer paid it. This is what replaces
-  // the separate `invoices` table from §10.
-  invoiceNumber       Int?
-  finalizedAt         DateTime?
-  invoiceSnapshotJson String?
-
-  // Signature captured on approval (§7: signatures). Data URL or object key.
+  // Captured when the customer approves. §7: signatures.
   approvalSignature String?
+  approvalIp        String?
+  // Random token for the public approval link, so the URL is unguessable.
+  approvalToken     String?  @unique
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  sentAt      DateTime?
-  approvedAt  DateTime?
-  completedAt DateTime?
-  paidAt      DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  sentAt     DateTime?
+  approvedAt DateTime?
+  expiresAt  DateTime?
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location Location? @relation(fields: [locationId], references: [id])
-  customer Customer  @relation(fields: [customerId], references: [id])
-  vehicle  Vehicle   @relation(fields: [vehicleId], references: [id])
-  author   User?     @relation("TicketAuthor", fields: [authorId], references: [id])
-  advisor  User?     @relation("TicketAdvisor", fields: [advisorId], references: [id])
-
-  jobs       Job[]
-  payments   Payment[]
-  photos     Photo[]
-  notes      Note[]
-  messages   Message[]
-  events     TicketEvent[]
-  inspections InspectionResult[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location     Location?     @relation(fields: [locationId], references: [id])
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  vehicle      Vehicle       @relation(fields: [vehicleId], references: [id])
+  author       User?         @relation("EstimateAuthor", fields: [authorId], references: [id])
+  repairOrders RepairOrder[]
 
   @@unique([tenantId, number])
-  @@unique([tenantId, invoiceNumber])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([customerId])
   @@index([vehicleId])
 }
 
-// Status history, per §16 Prompt 3.
-model TicketEvent {
-  id       String   @id @default(cuid())
-  ticketId String
-  userId   String?
-  from     TicketStatus?
-  to       TicketStatus
-  note     String?
-  createdAt DateTime @default(now())
-
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id])
-
-  @@index([ticketId])
+enum RepairOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETE
+  INVOICED
+  CANCELLED
 }
 
-// One repair on the ticket: "Front brake pads", "State inspection".
-// Parts and labour hang off the job so the shop sees what each repair earned.
-model Job {
-  id       String  @id @default(cuid())
-  ticketId String
-  name     String
-  notes    String?
-  sort     Int     @default(0)
-  // A customer can approve the brakes and decline the struts.
-  approved Boolean @default(true)
-  declinedAt DateTime?
-  assignedToId String?
-  startedAt    DateTime?
-  completedAt  DateTime?
+model RepairOrder {
+  id         String            @id @default(cuid())
+  tenantId   String
+  locationId String?
+  number     Int
+  // Null when the RO was written from scratch at the counter, which is normal
+  // for walk-in oil changes and inspections.
+  estimateId String?
+  customerId String
+  vehicleId  String
+  advisorId  String?
+  technicianId String?
+  status     RepairOrderStatus @default(OPEN)
 
-  ticket     Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  assignedTo User?      @relation(fields: [assignedToId], references: [id])
-  lineItems  LineItem[]
+  mileageIn    Int?
+  complaint    String?
+  customerNote String?
+  internalNote String?
+  promisedAt   DateTime?
 
-  @@index([ticketId])
-  @@index([assignedToId])
+  subtotalCents Int   @default(0)
+  discountPct   Float @default(0)
+  discountCents Int   @default(0)
+  taxRate       Float @default(0)
+  taxCents      Int   @default(0)
+  totalCents    Int   @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location    Location?          @relation(fields: [locationId], references: [id])
+  estimate    Estimate?          @relation(fields: [estimateId], references: [id])
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle            @relation(fields: [vehicleId], references: [id])
+  advisor     User?              @relation("ROAdvisor", fields: [advisorId], references: [id])
+  technician  User?              @relation("ROTechnician", fields: [technicianId], references: [id])
+  invoices    Invoice[]
+  events      RepairOrderEvent[]
+  inspections InspectionResult[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([estimateId])
+}
+
+// Status history, per §16 Prompt 3.
+model RepairOrderEvent {
+  id            String             @id @default(cuid())
+  repairOrderId String
+  userId        String?
+  from          RepairOrderStatus?
+  to            RepairOrderStatus
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@index([repairOrderId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN     // finalised, balance due
+  PARTIAL  // partially paid
+  PAID
+  VOID
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  locationId    String?
+  number        Int
+  repairOrderId String
+  customerId    String
+  vehicleId     String
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotalCents    Int   @default(0)
+  discountPct      Float @default(0)
+  discountCents    Int   @default(0)
+  taxRate          Float @default(0)
+  taxCents         Int   @default(0)
+  totalCents       Int   @default(0)
+  paidCents        Int   @default(0)
+  balanceDueCents  Int   @default(0)
+
+  // Net terms copied from the customer at finalisation, so changing a fleet
+  // account's terms later does not silently restate old invoices.
+  termsDays Int?
+  dueAt     DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  finalizedAt DateTime?
+  paidAt      DateTime?
+  voidedAt    DateTime?
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location    Location?   @relation(fields: [locationId], references: [id])
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id])
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
+  payments    Payment[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([repairOrderId])
 }
 
 enum LineKind {
@@ -353,32 +426,46 @@ enum LineKind {
   TIRE
 }
 
+// Polymorphic across estimates, repair orders and invoices, per §10.
+// Prisma has no polymorphic relations, so parentType + parentId carry it and
+// there is no foreign key. Always filter on BOTH columns plus tenantId.
 model LineItem {
-  id    String   @id @default(cuid())
-  jobId String
-  kind  LineKind
-  name  String
-  sku   String?
-  // Links the line back to stock so selling it can decrement inventory.
+  id         String  @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+
+  kind            LineKind
+  name            String
+  sku             String?
+  // Links back to stock so selling decrements inventory.
   inventoryItemId String?
+  // Groups lines into a repair on screen ("Front brakes"), without needing a
+  // jobs table. Purely a display and approval grouping.
+  section         String?
   // Hours for LABOR, quantity otherwise.
   qty        Float   @default(1)
-  // What the shop pays. Drives margin reporting; never shown to the customer.
+  // What the shop pays. Margin reporting only; never shown to the customer.
   costCents  Int     @default(0)
   // What the customer pays, per unit or per hour.
   priceCents Int     @default(0)
   taxable    Boolean @default(true)
+  // A customer can approve the brakes and decline the struts. Declined lines
+  // are carried forward but excluded from totals.
+  approved   Boolean @default(true)
+  declinedAt DateTime?
   sort       Int     @default(0)
 
-  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
 
-  @@index([jobId])
+  @@index([tenantId])
+  @@index([parentType, parentId])
   @@index([inventoryItemId])
 }
 
-// A repair the shop sells constantly, dropped onto a ticket in one tap.
-// Line items are copied on use, so editing the package never rewrites history.
+// A repair the shop sells constantly, dropped onto a document in one tap.
+// Items are copied on use, so editing the package never rewrites history.
 model ServicePackage {
   id        String   @id @default(cuid())
   tenantId  String
@@ -392,7 +479,7 @@ model ServicePackage {
 }
 
 // ============================================================ payments
-// Blueprint §12: no raw card data. References, brand, last4 and status only.
+// §12: no raw card data. References, brand, last4 and status only.
 
 enum PaymentMethod {
   CARD
@@ -414,34 +501,32 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  tenantId    String
-  ticketId    String
-  amountCents Int
-  tipCents    Int           @default(0)
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
+  id           String        @id @default(cuid())
+  tenantId     String
+  invoiceId    String
+  amountCents  Int
+  tipCents     Int           @default(0)
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
   // Which processor handled it, e.g. "wholesale_payments". Null for cash.
-  processor   String?
-  // The processor's transaction id, for reconciliation.
+  processor    String?
   processorRef String?
-  // Gateway response code, kept for disputes.
   responseCode String?
-  brand       String?
-  last4       String?
+  brand        String?
+  last4        String?
   // Cheque number, cash drawer reference, etc.
-  reference   String?
+  reference    String?
   // Batch/payout reference, per §7.
-  batchRef    String?
-  createdAt   DateTime      @default(now())
-  capturedAt  DateTime?
+  batchRef     String?
+  createdAt    DateTime      @default(now())
+  capturedAt   DateTime?
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ticket  Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   refunds Refund[]
 
   @@index([tenantId])
-  @@index([ticketId])
+  @@index([invoiceId])
   @@index([processorRef])
 }
 
@@ -467,19 +552,18 @@ model Refund {
 // =========================================================== inventory
 
 model InventoryItem {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   tenantId     String
   sku          String
   name         String
   category     String?
   vendor       String?
-  // Tyres need a size to be findable.
   tireSize     String?
-  qtyOnHand    Float   @default(0)
-  costCents    Int     @default(0)
-  priceCents   Int     @default(0)
-  reorderPoint Float   @default(0)
-  active       Boolean @default(true)
+  qtyOnHand    Float    @default(0)
+  costCents    Int      @default(0)
+  priceCents   Int      @default(0)
+  reorderPoint Float    @default(0)
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -492,13 +576,13 @@ model InventoryItem {
 }
 
 model InventoryMovement {
-  id       String   @id @default(cuid())
-  tenantId String
-  itemId   String
+  id        String   @id @default(cuid())
+  tenantId  String
+  itemId    String
   // Negative for a sale, positive for a receipt.
-  qtyDelta Float
-  reason   String
-  userId   String?
+  qtyDelta  Float
+  reason    String
+  userId    String?
   createdAt DateTime @default(now())
 
   tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -512,13 +596,12 @@ model InventoryMovement {
 // ========================================================= inspections
 
 model InspectionTemplate {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   tenantId    String
   name        String
   serviceType String?
-  // Checklist definition as JSON, copied into results on use.
   itemsJson   String
-  active      Boolean @default(true)
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -534,21 +617,21 @@ enum InspectionStatus {
 }
 
 model InspectionResult {
-  id         String           @id @default(cuid())
-  tenantId   String
-  ticketId   String
-  templateId String?
-  status     InspectionStatus @default(IN_PROGRESS)
-  createdAt  DateTime         @default(now())
-  completedAt DateTime?
+  id            String           @id @default(cuid())
+  tenantId      String
+  repairOrderId String
+  templateId    String?
+  status        InspectionStatus @default(IN_PROGRESS)
+  createdAt     DateTime         @default(now())
+  completedAt   DateTime?
 
-  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ticket   Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  template InspectionTemplate? @relation(fields: [templateId], references: [id])
-  items    InspectionItem[]
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder         @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  template    InspectionTemplate? @relation(fields: [templateId], references: [id])
+  items       InspectionItem[]
 
   @@index([tenantId])
-  @@index([ticketId])
+  @@index([repairOrderId])
 }
 
 enum Condition {
@@ -559,47 +642,54 @@ enum Condition {
 }
 
 model InspectionItem {
-  id       String    @id @default(cuid())
-  resultId String
-  label    String
+  id        String    @id @default(cuid())
+  resultId  String
+  label     String
   condition Condition @default(NA)
-  notes    String?
+  notes     String?
   // Comma-separated object keys. Photos and video, per §6.3.
   mediaUrls String?
-  sort     Int       @default(0)
+  sort      Int       @default(0)
 
   result InspectionResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
 
   @@index([resultId])
 }
 
-// ================================================ photos, notes, messages
+// ============================================ attachments, notes, messages
 
-model Photo {
-  id       String   @id @default(cuid())
-  ticketId String
-  url      String
-  caption  String?
-  // Whether the customer sees it on the estimate.
-  shared   Boolean  @default(false)
-  createdAt DateTime @default(now())
+// Photos and documents, polymorphic like line items.
+model Attachment {
+  id         String   @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+  url        String
+  caption    String?
+  // Whether the customer sees it on the estimate or invoice.
+  shared     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@index([ticketId])
+  @@index([tenantId])
+  @@index([parentType, parentId])
 }
 
 model Note {
-  id       String   @id @default(cuid())
-  ticketId String
-  authorId String?
-  body     String
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+  authorId   String?
+  body       String
+  createdAt  DateTime @default(now())
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   author User?  @relation(fields: [authorId], references: [id])
 
-  @@index([ticketId])
+  @@index([tenantId])
+  @@index([parentType, parentId])
 }
 
 enum MessageChannel {
@@ -617,30 +707,30 @@ enum MessageStatus {
 // Every text and email sent. The shop can prove it told the customer, and
 // opt-outs and failures are auditable.
 model Message {
-  id         String         @id @default(cuid())
-  tenantId   String
-  ticketId   String?
-  customerId String?
-  channel    MessageChannel
-  template   String?
-  toAddress  String
-  body       String
-  status     MessageStatus  @default(QUEUED)
+  id          String         @id @default(cuid())
+  tenantId    String
+  customerId  String?
+  parentType  DocType?
+  parentId    String?
+  channel     MessageChannel
+  template    String?
+  toAddress   String
+  body        String
+  status      MessageStatus  @default(QUEUED)
   providerRef String?
-  error      String?
-  createdAt  DateTime       @default(now())
-  sentAt     DateTime?
+  error       String?
+  createdAt   DateTime       @default(now())
+  sentAt      DateTime?
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ticket   Ticket?   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   customer Customer? @relation(fields: [customerId], references: [id])
 
   @@index([tenantId])
-  @@index([ticketId])
+  @@index([parentType, parentId])
 }
 
 // ============================================================ audit
-// Blueprint §8: every payment, refund, post-payment invoice edit, tax change,
+// §8: every payment, refund, post-payment invoice edit, tax change,
 // permission change and inventory adjustment is logged.
 
 model AuditLog {
