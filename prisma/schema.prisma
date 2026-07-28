@@ -1,0 +1,663 @@
+// Auto POS — data model, per the Master Engineering Blueprint v1.0 §10.
+//
+// Blueprint §8 rules applied throughout:
+//   - every tenant-owned table carries tenantId
+//   - indexes on tenantId, status, createdAt, customerId, vehicleId
+//   - no raw cardholder data anywhere; processor references only
+//
+// ONE DEVIATION FROM §10, FLAGGED FOR YOUR DECISION
+// -------------------------------------------------
+// §10 lists `estimates`, `repair_orders` and `invoices` as three tables.
+// This implements them as ONE `Ticket` table with a status, because:
+//   - §6.1 and §7 both describe the same thing as a status flow, so the
+//     blueprint is not self-consistent here
+//   - three tables means copying line items twice per job, and every copy is
+//     a chance for the invoice total to disagree with what the customer
+//     approved -- the single worst bug this product could ship
+//   - "convert estimate to RO" becomes a status change, which is why the shop
+//     never re-keys anything
+// The one real advantage of separate tables -- an invoice being a frozen legal
+// document -- is preserved by snapshotting the ticket at finalisation
+// (invoiceSnapshotJson below) rather than by splitting the table.
+// If you want the three-table version instead, say so; it is one migration.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  // SQLite locally so there is no server to run. Blueprint §9 specifies
+  // Postgres for production: change this to "postgresql" and point
+  // DATABASE_URL at the server. No model changes required -- Prisma promotes
+  // the emulated enums below to native Postgres enums automatically.
+  provider = "sqlite"
+}
+
+// ============================================================ tenancy
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  status    TenantStatus @default(ACTIVE)
+  plan      String       @default("starter")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  locations           Location[]
+  memberships         Membership[]
+  customers           Customer[]
+  vehicles            Vehicle[]
+  tickets             Ticket[]
+  payments            Payment[]
+  refunds             Refund[]
+  inventoryItems      InventoryItem[]
+  inventoryMovements  InventoryMovement[]
+  inspectionTemplates InspectionTemplate[]
+  inspectionResults   InspectionResult[]
+  messages            Message[]
+  auditLogs           AuditLog[]
+  servicePackages     ServicePackage[]
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  // Defaults a new ticket inherits. Blueprint §7 Admin.
+  laborRateCents Int  @default(12500)
+  taxRate        Float @default(0)
+  // Printed at the bottom of every receipt.
+  receiptFooter  String?
+  createdAt DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  tickets     Ticket[]
+
+  @@index([tenantId])
+}
+
+// Authenticated person. Global, not tenant-scoped: one login can work at more
+// than one shop, which is normal for owners of two locations and for
+// bookkeepers serving several clients.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  phone        String?
+  passwordHash String?
+  mfaEnabled   Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  memberships    Membership[]
+  assignedJobs   Job[]
+  authoredTickets Ticket[]        @relation("TicketAuthor")
+  advisedTickets  Ticket[]        @relation("TicketAdvisor")
+  notes          Note[]
+  auditLogs      AuditLog[]
+  movements      InventoryMovement[]
+  approvedRefunds Refund[]
+  statusEvents   TicketEvent[]
+}
+
+// Blueprint §5.
+enum Role {
+  OWNER
+  MANAGER
+  SERVICE_ADVISOR
+  TECHNICIAN
+  COUNTER_CLERK
+  BOOKKEEPER
+}
+
+model Membership {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  // Null means access to every location in the tenant.
+  locationId String?
+  role       Role     @default(TECHNICIAN)
+  active     Boolean  @default(true)
+  // What the tech costs per hour. Drives job profitability; never exposed to
+  // TECHNICIAN or COUNTER_CLERK.
+  hourlyCostCents Int?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// ================================================= customers & vehicles
+
+enum CustomerType {
+  RETAIL
+  FLEET
+  WHOLESALE
+}
+
+model Customer {
+  id        String       @id @default(cuid())
+  tenantId  String
+  type      CustomerType @default(RETAIL)
+  // Company name for FLEET/WHOLESALE; person name for RETAIL.
+  firstName String?
+  lastName  String?
+  company   String?
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  // Net terms in days for fleet accounts. Null = due on receipt.
+  billingTermsDays Int?
+  taxExempt        Boolean @default(false)
+  taxExemptId      String?
+  // Blueprint §7: communication opt-in/out, checked before every send.
+  smsOptOut   Boolean @default(false)
+  emailOptOut Boolean @default(false)
+  tags        String?
+  notes       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles Vehicle[]
+  tickets  Ticket[]
+  messages Message[]
+
+  @@index([tenantId])
+  @@index([tenantId, lastName])
+  @@index([tenantId, company])
+  @@index([phone])
+}
+
+model Vehicle {
+  id         String  @id @default(cuid())
+  tenantId   String
+  customerId String
+  vin        String?
+  plate      String?
+  year       Int?
+  make       String?
+  model      String?
+  trim       String?
+  engine     String?
+  color      String?
+  tireSize   String?
+  // Latest known reading. Per-visit readings live on the ticket.
+  mileage    Int?
+  warrantyNotes String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tickets  Ticket[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([vin])
+  @@index([plate])
+}
+
+// ==================================================== estimate / RO / invoice
+
+enum TicketStatus {
+  ESTIMATE    // being built
+  SENT        // approval link out, waiting on customer
+  APPROVED    // customer said yes
+  IN_PROGRESS // tech working
+  COMPLETE    // work done, not invoiced
+  INVOICED    // finalised, balance due
+  PAID        // closed
+  DECLINED    // customer said no
+  VOID        // written off
+}
+
+model Ticket {
+  id         String       @id @default(cuid())
+  tenantId   String
+  locationId String?
+  // Sequential per tenant, shown to humans as "RO #1042".
+  number     Int
+  customerId String
+  vehicleId  String
+  authorId   String?
+  advisorId  String?
+  status     TicketStatus @default(ESTIMATE)
+
+  mileageIn    Int?
+  // The customer's own words.
+  complaint    String?
+  // Printed for the customer.
+  customerNote String?
+  // Never printed, never sent.
+  internalNote String?
+  promisedAt   DateTime?
+
+  // Money in integer cents. Denormalised from line items on every write so
+  // list screens never have to aggregate.
+  subtotalCents Int   @default(0)
+  discountPct   Float @default(0)
+  discountCents Int   @default(0)
+  taxRate       Float @default(0)
+  taxCents      Int   @default(0)
+  totalCents    Int   @default(0)
+  paidCents     Int   @default(0)
+
+  // Set once, at finalisation. Frozen copy of line items and totals so an
+  // invoice cannot change after the customer paid it. This is what replaces
+  // the separate `invoices` table from §10.
+  invoiceNumber       Int?
+  finalizedAt         DateTime?
+  invoiceSnapshotJson String?
+
+  // Signature captured on approval (§7: signatures). Data URL or object key.
+  approvalSignature String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sentAt      DateTime?
+  approvedAt  DateTime?
+  completedAt DateTime?
+  paidAt      DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id])
+  customer Customer  @relation(fields: [customerId], references: [id])
+  vehicle  Vehicle   @relation(fields: [vehicleId], references: [id])
+  author   User?     @relation("TicketAuthor", fields: [authorId], references: [id])
+  advisor  User?     @relation("TicketAdvisor", fields: [advisorId], references: [id])
+
+  jobs       Job[]
+  payments   Payment[]
+  photos     Photo[]
+  notes      Note[]
+  messages   Message[]
+  events     TicketEvent[]
+  inspections InspectionResult[]
+
+  @@unique([tenantId, number])
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([vehicleId])
+}
+
+// Status history, per §16 Prompt 3.
+model TicketEvent {
+  id       String   @id @default(cuid())
+  ticketId String
+  userId   String?
+  from     TicketStatus?
+  to       TicketStatus
+  note     String?
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+}
+
+// One repair on the ticket: "Front brake pads", "State inspection".
+// Parts and labour hang off the job so the shop sees what each repair earned.
+model Job {
+  id       String  @id @default(cuid())
+  ticketId String
+  name     String
+  notes    String?
+  sort     Int     @default(0)
+  // A customer can approve the brakes and decline the struts.
+  approved Boolean @default(true)
+  declinedAt DateTime?
+  assignedToId String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  ticket     Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  assignedTo User?      @relation(fields: [assignedToId], references: [id])
+  lineItems  LineItem[]
+
+  @@index([ticketId])
+  @@index([assignedToId])
+}
+
+enum LineKind {
+  PART
+  LABOR
+  FEE     // shop supplies, disposal, EPA
+  SUBLET  // sent out, e.g. machine shop
+  TIRE
+}
+
+model LineItem {
+  id    String   @id @default(cuid())
+  jobId String
+  kind  LineKind
+  name  String
+  sku   String?
+  // Links the line back to stock so selling it can decrement inventory.
+  inventoryItemId String?
+  // Hours for LABOR, quantity otherwise.
+  qty        Float   @default(1)
+  // What the shop pays. Drives margin reporting; never shown to the customer.
+  costCents  Int     @default(0)
+  // What the customer pays, per unit or per hour.
+  priceCents Int     @default(0)
+  taxable    Boolean @default(true)
+  sort       Int     @default(0)
+
+  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([jobId])
+  @@index([inventoryItemId])
+}
+
+// A repair the shop sells constantly, dropped onto a ticket in one tap.
+// Line items are copied on use, so editing the package never rewrites history.
+model ServicePackage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  itemsJson String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ============================================================ payments
+// Blueprint §12: no raw card data. References, brand, last4 and status only.
+
+enum PaymentMethod {
+  CARD
+  CASH
+  CHECK
+  ACH
+  HOUSE_ACCOUNT
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  VOIDED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  tenantId    String
+  ticketId    String
+  amountCents Int
+  tipCents    Int           @default(0)
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  // Which processor handled it, e.g. "wholesale_payments". Null for cash.
+  processor   String?
+  // The processor's transaction id, for reconciliation.
+  processorRef String?
+  // Gateway response code, kept for disputes.
+  responseCode String?
+  brand       String?
+  last4       String?
+  // Cheque number, cash drawer reference, etc.
+  reference   String?
+  // Batch/payout reference, per §7.
+  batchRef    String?
+  createdAt   DateTime      @default(now())
+  capturedAt  DateTime?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket  Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@index([tenantId])
+  @@index([ticketId])
+  @@index([processorRef])
+}
+
+model Refund {
+  id           String   @id @default(cuid())
+  tenantId     String
+  paymentId    String
+  amountCents  Int
+  reasonCode   String?
+  reason       String?
+  approvedById String?
+  processorRef String?
+  createdAt    DateTime @default(now())
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  approvedBy User?   @relation(fields: [approvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+}
+
+// =========================================================== inventory
+
+model InventoryItem {
+  id           String  @id @default(cuid())
+  tenantId     String
+  sku          String
+  name         String
+  category     String?
+  vendor       String?
+  // Tyres need a size to be findable.
+  tireSize     String?
+  qtyOnHand    Float   @default(0)
+  costCents    Int     @default(0)
+  priceCents   Int     @default(0)
+  reorderPoint Float   @default(0)
+  active       Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+  lineItems LineItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+}
+
+model InventoryMovement {
+  id       String   @id @default(cuid())
+  tenantId String
+  itemId   String
+  // Negative for a sale, positive for a receipt.
+  qtyDelta Float
+  reason   String
+  userId   String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  item   InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user   User?         @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([itemId])
+}
+
+// ========================================================= inspections
+
+model InspectionTemplate {
+  id          String  @id @default(cuid())
+  tenantId    String
+  name        String
+  serviceType String?
+  // Checklist definition as JSON, copied into results on use.
+  itemsJson   String
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  results InspectionResult[]
+
+  @@index([tenantId])
+}
+
+enum InspectionStatus {
+  IN_PROGRESS
+  COMPLETE
+  SENT
+}
+
+model InspectionResult {
+  id         String           @id @default(cuid())
+  tenantId   String
+  ticketId   String
+  templateId String?
+  status     InspectionStatus @default(IN_PROGRESS)
+  createdAt  DateTime         @default(now())
+  completedAt DateTime?
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket   Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  template InspectionTemplate? @relation(fields: [templateId], references: [id])
+  items    InspectionItem[]
+
+  @@index([tenantId])
+  @@index([ticketId])
+}
+
+enum Condition {
+  GREEN
+  YELLOW
+  RED
+  NA
+}
+
+model InspectionItem {
+  id       String    @id @default(cuid())
+  resultId String
+  label    String
+  condition Condition @default(NA)
+  notes    String?
+  // Comma-separated object keys. Photos and video, per §6.3.
+  mediaUrls String?
+  sort     Int       @default(0)
+
+  result InspectionResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@index([resultId])
+}
+
+// ================================================ photos, notes, messages
+
+model Photo {
+  id       String   @id @default(cuid())
+  ticketId String
+  url      String
+  caption  String?
+  // Whether the customer sees it on the estimate.
+  shared   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model Note {
+  id       String   @id @default(cuid())
+  ticketId String
+  authorId String?
+  body     String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId])
+}
+
+enum MessageChannel {
+  SMS
+  EMAIL
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+// Every text and email sent. The shop can prove it told the customer, and
+// opt-outs and failures are auditable.
+model Message {
+  id         String         @id @default(cuid())
+  tenantId   String
+  ticketId   String?
+  customerId String?
+  channel    MessageChannel
+  template   String?
+  toAddress  String
+  body       String
+  status     MessageStatus  @default(QUEUED)
+  providerRef String?
+  error      String?
+  createdAt  DateTime       @default(now())
+  sentAt     DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket   Ticket?   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([ticketId])
+}
+
+// ============================================================ audit
+// Blueprint §8: every payment, refund, post-payment invoice edit, tax change,
+// permission change and inventory adjustment is logged.
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  entityType String
+  entityId   String
+  action     String
+  beforeJson String?
+  afterJson  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+}
