@@ -8,6 +8,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { estimateToRepairOrder, repairOrderToInvoice, applyPayment } from "../lib/convert";
 import { formatCents } from "../lib/money";
 import { hashPassword } from "../lib/auth";
+import { createCustomer, createVehicle } from "../lib/customers";
 
 const db = new PrismaClient({
   adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }),
@@ -58,7 +59,9 @@ async function main() {
   ]);
 
   const customer = await db.customer.create({
-    data: { tenantId: tenant.id, type: "RETAIL", firstName: "Dana", lastName: "Whitfield", phone: "909-555-0142", email: "dana.whitfield@example.test" },
+    // phoneDigits is set explicitly here because this row is created directly
+    // rather than through createCustomer; without it she is unfindable by phone.
+    data: { tenantId: tenant.id, type: "RETAIL", firstName: "Dana", lastName: "Whitfield", phone: "909-555-0142", phoneDigits: "9095550142", email: "dana.whitfield@example.test" },
   });
   const vehicle = await db.vehicle.create({
     data: { tenantId: tenant.id, customerId: customer.id, year: 2017, make: "Toyota", model: "Tacoma", plate: "8XYZ221", vin: "3TMCZ5AN0HM062011", mileage: 96_400 },
@@ -154,6 +157,48 @@ async function main() {
       sentAt: new Date(),
     },
   });
+
+  // A book with enough variety that search and the list screen are worth
+  // looking at: retail and fleet, several vehicles, one opted out of texts.
+  type SeedCustomer = {
+    type: "RETAIL" | "FLEET" | "WHOLESALE";
+    firstName?: string; lastName?: string; company?: string;
+    phone: string; email?: string;
+    billingTermsDays?: number; taxExempt?: boolean; taxExemptId?: string; smsOptOut?: boolean;
+  };
+  type SeedVehicle = {
+    year: number; make: string; model: string; plate: string;
+    vin?: string; mileage: number; tireSize?: string;
+  };
+
+  const more: [SeedCustomer, SeedVehicle[]][] = [
+    [
+      { type: "RETAIL", firstName: "Marcus", lastName: "Bell", phone: "(909) 555-7781", email: "mbell@example.test" },
+      [{ year: 2014, make: "Honda", model: "Civic", plate: "6ABC912", vin: "2HGFB2F53EH512004", mileage: 148_300 }],
+    ],
+    [
+      { type: "FLEET", company: "Redlands City Fleet", phone: "(909) 555-9900", billingTermsDays: 30, taxExempt: true, taxExemptId: "CA-EX-44120" },
+      [
+        { year: 2020, make: "Ford", model: "Transit 250", plate: "CITY07", mileage: 61_200 },
+        { year: 2019, make: "Chevrolet", model: "Silverado 2500", plate: "CITY11", mileage: 94_770 },
+      ],
+    ],
+    [
+      { type: "RETAIL", firstName: "Alicia", lastName: "Nguyen", phone: "(760) 555-2210", smsOptOut: true },
+      [{ year: 2021, make: "Subaru", model: "Outback", plate: "8JKL447", mileage: 38_950, tireSize: "225/65R17" }],
+    ],
+    [
+      { type: "WHOLESALE", company: "Inland Auto Wholesale", phone: "(951) 555-3040", billingTermsDays: 15 },
+      [{ year: 2016, make: "RAM", model: "1500", plate: "WHL220", mileage: 122_400 }],
+    ],
+  ];
+
+  // Goes through the same validators the app uses, so the demo data can never
+  // be something the forms would have rejected.
+  for (const [c, vehicles] of more) {
+    const created = await createCustomer(tenant.id, c);
+    for (const v of vehicles) await createVehicle(tenant.id, created.id, v);
+  }
 
   // A second estimate left open so list screens have something to show.
   const open = await db.estimate.create({

@@ -1,11 +1,14 @@
-import path from "node:path";
-import { PrismaClient } from "@/lib/generated/prisma";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { PrismaClient } from "@/lib/generated/prisma";
+import { db } from "@/lib/db";
 
-const TEST_DB = `file:${path.resolve(process.cwd(), "prisma/test.db")}`;
-
-export function testDb() {
-  return new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: TEST_DB }) });
+/**
+ * The application's own client, pointed at the test database by
+ * vitest.config.ts. Deliberately not a second connection: code under test
+ * imports lib/db, and a separate client here would mean fixtures and code were
+ * writing to different files.
+ */
+export function testDb(): PrismaClient {
+  return db;
 }
 
 let seq = 0;

@@ -181,6 +181,9 @@ model Customer {
   lastName         String?
   company          String?
   phone            String?
+  // Digits only, maintained on write. A customer phoning the counter is looked
+  // up by number, and "(909) 555-0142" must match a search for "9095550142".
+  phoneDigits      String?
   email            String?
   address          String?
   city             String?
@@ -208,6 +211,7 @@ model Customer {
   @@index([tenantId])
   @@index([tenantId, lastName])
   @@index([tenantId, company])
+  @@index([tenantId, phoneDigits])
   @@index([phone])
 }
 
