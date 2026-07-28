@@ -103,6 +103,7 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
+  sessions        Session[]
   memberships     Membership[]
   advisedOrders   RepairOrder[]      @relation("ROAdvisor")
   assignedOrders  RepairOrder[]      @relation("ROTechnician")
@@ -112,6 +113,25 @@ model User {
   movements       InventoryMovement[]
   approvedRefunds Refund[]
   orderEvents     RepairOrderEvent[]
+}
+
+// Server-side sessions. The cookie carries an opaque id and nothing else, so
+// revoking a session is a delete rather than waiting out a token's expiry.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  // Which tenant this session is currently acting inside. A user with two
+  // memberships switches by updating this, never by trusting a request param.
+  tenantId  String?
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Blueprint §5.

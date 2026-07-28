@@ -3,11 +3,14 @@ import path from "node:path";
 
 export default defineConfig({
   test: {
-    // Each file gets its own database file, so suites cannot see each other's
-    // rows and can run in parallel.
     environment: "node",
     globalSetup: "./tests/global-setup.ts",
     pool: "forks",
+    // SQLite takes a database-wide lock on write, so parallel test files make
+    // each other's transactions time out rather than fail honestly. Production
+    // is Postgres (blueprint §9) and has no such limit; this constraint belongs
+    // to the local test database only.
+    fileParallelism: false,
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, ".") },

@@ -7,6 +7,7 @@ import { PrismaClient } from "../lib/generated/prisma";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { estimateToRepairOrder, repairOrderToInvoice, applyPayment } from "../lib/convert";
 import { formatCents } from "../lib/money";
+import { hashPassword } from "../lib/auth";
 
 const db = new PrismaClient({
   adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }),
@@ -30,10 +31,14 @@ async function main() {
     },
   });
 
+  // Demo credentials. Every seeded user signs in with this password.
+  const DEMO_PASSWORD = "shopdesk";
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+
   const [owner, advisor, tech] = await Promise.all([
-    db.user.create({ data: { name: "Coleman Clark", email: "coleman@blueduckauto.test" } }),
-    db.user.create({ data: { name: "Priya Raman", email: "priya@blueduckauto.test" } }),
-    db.user.create({ data: { name: "Marco Reyes", email: "marco@blueduckauto.test" } }),
+    db.user.create({ data: { name: "Coleman Clark", email: "coleman@blueduckauto.test", passwordHash } }),
+    db.user.create({ data: { name: "Priya Raman", email: "priya@blueduckauto.test", passwordHash } }),
+    db.user.create({ data: { name: "Marco Reyes", email: "marco@blueduckauto.test", passwordHash } }),
   ]);
   await db.membership.createMany({
     data: [
@@ -171,6 +176,11 @@ Seeded "${tenant.name}" (${location.city}, ${location.state})
   Estimate #${open.number}   open, awaiting build
 
   ${await db.customer.count({ where: { tenantId: tenant.id } })} customer, ${await db.vehicle.count({ where: { tenantId: tenant.id } })} vehicle, ${await db.inventoryItem.count({ where: { tenantId: tenant.id } })} stocked parts
+
+Sign in at /login with password "${DEMO_PASSWORD}":
+  coleman@blueduckauto.test   Owner
+  priya@blueduckauto.test     Service Advisor
+  marco@blueduckauto.test     Technician
 `);
 }
 

@@ -45,3 +45,7 @@ next-env.d.ts
 prisma/dev.db*
 lib/generated/
 prisma/test.db*
+
+# local verification artifacts
+verify.mjs
+shot-*.png
