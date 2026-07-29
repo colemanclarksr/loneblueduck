@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # Only main on push. Listening to every branch as well as pull_request meant
+  # each commit on an open PR ran the whole suite twice.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 # A newer push to the same branch supersedes an in-flight run, so a PR's status
