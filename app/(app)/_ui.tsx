@@ -12,7 +12,7 @@ export function Field({
   label, name, defaultValue, type = "text", placeholder, required, inputMode, className = "",
 }: {
   label: string; name: string; defaultValue?: string | number | null; type?: string;
-  placeholder?: string; required?: boolean; inputMode?: "text" | "numeric" | "tel" | "email"; className?: string;
+  placeholder?: string; required?: boolean; inputMode?: "text" | "numeric" | "decimal" | "tel" | "email"; className?: string;
 }) {
   return (
     <label className={`block ${className}`}>

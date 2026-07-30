@@ -8,6 +8,7 @@ import {
   addNote, createWalkIn, RepairOrderError,
 } from "@/lib/repairOrders";
 import { repairOrderToInvoice, ConversionError } from "@/lib/convert";
+import { consumeForInvoice } from "@/lib/inventory";
 import { db } from "@/lib/db";
 import { parseDollarsToCents } from "@/lib/money";
 import type { LineKind, RepairOrderStatus } from "@/lib/generated/prisma";
@@ -216,7 +217,13 @@ export async function invoiceAction(_prev: FormState, form: FormData): Promise<F
     return asState(e);
   }
 
+  // Deliberately after the invoice exists and outside its transaction: a stock
+  // problem must never undo a bill the shop is about to hand to a customer.
+  // consumeForInvoice is safe to re-run, so a retry cannot double-decrement.
+  await consumeForInvoice(session.tenant.id, invoiceId, session.user.id);
+
   revalidatePath("/repair-orders");
   revalidatePath("/invoices");
+  revalidatePath("/inventory");
   redirect(`/invoices/${invoiceId}`);
 }

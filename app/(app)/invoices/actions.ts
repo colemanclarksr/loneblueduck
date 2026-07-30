@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/session";
 import { canRefund, MANAGER_REFUND_LIMIT_CENTS } from "@/lib/permissions";
 import { takePayment, refundPayment, voidInvoice, InvoiceError } from "@/lib/invoices";
+import { restoreForInvoice } from "@/lib/inventory";
 import { parseDollarsToCents, formatCents } from "@/lib/money";
 import type { PaymentMethod } from "@/lib/generated/prisma";
 
@@ -95,7 +96,11 @@ export async function voidAction(_prev: FormState, form: FormData): Promise<Form
     return asState(e);
   }
 
+  // The parts were never sold after all, so they go back on the shelf.
+  await restoreForInvoice(session.tenant.id, invoiceId, session.user.id);
+
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
+  revalidatePath("/inventory");
   return { ok: "Invoice voided." };
 }
