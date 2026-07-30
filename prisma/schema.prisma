@@ -646,8 +646,13 @@ model InspectionResult {
   repairOrderId String
   templateId    String?
   status        InspectionStatus @default(IN_PROGRESS)
+  // Unguessable, and the only credential on the customer-facing view. Minted
+  // when the inspection is sent, not when it is started, so an unfinished
+  // checklist has no reachable URL.
+  shareToken    String?          @unique
   createdAt     DateTime         @default(now())
   completedAt   DateTime?
+  sentAt        DateTime?
 
   tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   repairOrder RepairOrder         @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
@@ -668,6 +673,9 @@ enum Condition {
 model InspectionItem {
   id        String    @id @default(cuid())
   resultId  String
+  // "Brakes", "Tires", "Under the hood" -- what a 40-point checklist needs so
+  // it reads as sections rather than forty loose rows.
+  section   String?
   label     String
   condition Condition @default(NA)
   notes     String?

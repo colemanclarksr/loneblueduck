@@ -7,8 +7,10 @@ import { groupBySection } from "@/lib/estimates";
 import { displayName, describeVehicle } from "@/lib/customers";
 import { formatCents } from "@/lib/money";
 import { Card } from "../../_ui";
+import { listTemplates, ensureDefaultTemplate } from "@/lib/inspections";
 import { LineRow, AddLine, AddSection } from "./LineEditor";
 import { StatusBar, InvoiceButton, AssignPicker, NoteForm, NotesAndDiscount } from "./Floor";
+import { StartInspection } from "./inspection/StartInspection";
 
 const BADGE: Record<string, string> = {
   OPEN: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
@@ -29,6 +31,9 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
   const editable = isEditable(ro.status);
   const showCost = can(role, "reports:financial");
   const people = await technicians(session.tenant.id);
+  // Seeds the default checklist on first use, so the button is never a dead end.
+  await ensureDefaultTemplate(session.tenant.id);
+  const templates = await listTemplates(session.tenant.id);
   const sections = groupBySection(ro.lineItems);
   const laborRate = ro.location?.laborRateCents ?? 12_500;
 
@@ -136,6 +141,29 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
           {ro.status !== "INVOICED" && ro.status !== "CANCELLED" ? (
             <Card><AssignPicker repairOrderId={ro.id} technicianId={ro.technicianId} people={people} /></Card>
           ) : null}
+
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Inspections
+            </h2>
+            {ro.inspections.length > 0 ? (
+              <ul className="mb-3 space-y-1.5 text-sm">
+                {ro.inspections.map((i) => (
+                  <li key={i.id}>
+                    <Link href={`/repair-orders/${ro.id}/inspection/${i.id}`} className="text-slate-800 underline dark:text-slate-200">
+                      {i.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </Link>
+                    <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                      {i.status === "SENT" ? "sent to customer" : i.status === "COMPLETE" ? "complete" : "in progress"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {ro.status !== "CANCELLED" ? (
+              <StartInspection repairOrderId={ro.id} templates={templates} />
+            ) : null}
+          </Card>
 
           <NotesAndDiscount
             repairOrderId={ro.id}
