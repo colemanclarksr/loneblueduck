@@ -132,7 +132,37 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
         <aside className="space-y-4">
-          {owing ? <TakePayment invoiceId={invoice.id} balanceDueCents={invoice.balanceDueCents} /> : null}
+          {owing ? (
+            <TakePayment invoiceId={invoice.id} balanceDueCents={invoice.balanceDueCents} />
+          ) : invoice.status === "PAID" ? (
+            // Taking the last payment removes the form, which would take the
+            // action's success message with it -- the clerk would click
+            // "Record $147.95" and watch the panel silently disappear. This
+            // says plainly what happened, and still reads correctly on a
+            // later visit.
+            <Card className="bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900">
+              <p className="text-lg font-semibold text-emerald-900 dark:text-emerald-200">
+                Paid in full — {formatCents(invoice.totalCents)}
+              </p>
+              <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                {invoice.paidAt
+                  ? invoice.paidAt.toLocaleString("en-US", {
+                      month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+                    })
+                  : "Nothing outstanding."}
+              </p>
+              <div className="mt-3">
+                <LinkButton href={`/invoices/${invoice.id}/receipt`} variant="primary">Print the receipt</LinkButton>
+              </div>
+            </Card>
+          ) : invoice.status === "VOID" ? (
+            <Card>
+              <p className="font-semibold text-slate-900 dark:text-slate-50">This invoice was voided.</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                It is kept rather than deleted, so the numbering and the audit trail stay intact.
+              </p>
+            </Card>
+          ) : null}
 
           {invoice.payments.length > 0 ? (
             <Card>

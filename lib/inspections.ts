@@ -140,6 +140,9 @@ export async function getInspectionByToken(token: string) {
     where: { shareToken: token },
     include: {
       items: { orderBy: { sort: "asc" } },
+      // The business name, not the location's. "Main Street" is what the shop
+      // calls the building; the customer knows it as Blue Duck Auto.
+      tenant: { select: { name: true } },
       repairOrder: { select: { number: true, customer: true, vehicle: true, location: true } },
     },
   });

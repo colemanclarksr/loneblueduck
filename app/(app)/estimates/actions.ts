@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/session";
 import {
-  createEstimate, addLine, updateLine, removeLine, updateEstimate,
+  createEstimate, addLine, updateLine, removeLine, updateEstimate, addPackage,
   sendForApproval, EstimateError, type LineInput,
 } from "@/lib/estimates";
 import { estimateToRepairOrder, ConversionError } from "@/lib/convert";
@@ -115,6 +115,22 @@ export async function removeLineAction(_prev: FormState, form: FormData): Promis
 
   try {
     await removeLine(session.tenant.id, lineId);
+  } catch (e) {
+    return asState(e);
+  }
+
+  revalidatePath(`/estimates/${estimateId}`);
+  return {};
+}
+
+export async function addPackageAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await assertPermission("estimate:write");
+  const estimateId = str(form, "estimateId");
+  const packageId = str(form, "packageId");
+  if (!estimateId || !packageId) return { error: "Missing estimate or package." };
+
+  try {
+    await addPackage(session.tenant.id, estimateId, packageId);
   } catch (e) {
     return asState(e);
   }

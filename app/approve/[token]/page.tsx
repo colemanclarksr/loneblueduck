@@ -29,9 +29,10 @@ export default async function ApprovePage({ params }: { params: Promise<{ token:
     <main className="min-h-dvh bg-slate-100 p-4 dark:bg-slate-950">
       <div className="mx-auto max-w-lg py-6">
         <header className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
-            {estimate.location?.name ?? "Your shop"}
-          </h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{estimate.tenant.name}</h1>
+          {estimate.location?.address ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{estimate.location.address}</p>
+          ) : null}
           <p className="mt-1 text-slate-600 dark:text-slate-400">
             Estimate #{estimate.number} for {displayName(estimate.customer)}
           </p>

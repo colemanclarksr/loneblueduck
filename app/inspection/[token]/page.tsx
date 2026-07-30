@@ -48,7 +48,10 @@ export default async function PublicInspectionPage({ params }: { params: Promise
     <main className="min-h-dvh bg-slate-100 p-4 dark:bg-slate-950">
       <div className="mx-auto max-w-lg py-6">
         <header className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{shop?.name ?? "Your shop"}</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{inspection.tenant.name}</h1>
+          {shop?.address ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{shop.address}</p>
+          ) : null}
           <p className="mt-1 text-slate-600 dark:text-slate-400">
             Inspection for {displayName(inspection.repairOrder.customer)}
           </p>

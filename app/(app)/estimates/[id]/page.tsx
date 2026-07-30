@@ -7,8 +7,10 @@ import { can } from "@/lib/permissions";
 import { formatCents } from "@/lib/money";
 import { db } from "@/lib/db";
 import { Card } from "../../_ui";
+import { listPackages } from "@/lib/settings";
 import { LineRow, AddLine, AddSection } from "./LineEditor";
 import { SendButton, ConvertButton, NotesAndDiscount } from "./EstimateActions";
+import { PackagePicker } from "./PackagePicker";
 
 const STATUS: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -34,6 +36,14 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
   const showCost = can(session.membership.role, "reports:financial");
   const sections = groupBySection(estimate.lineItems);
   const laborRateCents = location?.laborRateCents ?? 12_500;
+
+  const packages = editable
+    ? (await listPackages(session.tenant.id)).map((p) => ({
+        id: p.id,
+        name: p.name,
+        totalCents: p.items.reduce((sum, i) => sum + Math.round((i.qty ?? 1) * i.priceCents), 0),
+      }))
+    : [];
 
   return (
     <div className="pb-24">
@@ -135,6 +145,7 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
             })
           )}
 
+          {editable ? <PackagePicker estimateId={estimate.id} packages={packages} /> : null}
           {editable ? <AddSection estimateId={estimate.id} laborRateCents={laborRateCents} /> : null}
         </div>
 

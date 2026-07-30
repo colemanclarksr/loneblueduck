@@ -32,8 +32,16 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <header className="mt-4 flex flex-wrap items-start gap-4 border-b border-slate-300 pb-4">
         <div>
-          <h1 className="text-xl font-bold">{invoice.location?.name ?? session.tenant.name}</h1>
+          {/* The business name, not the location's internal label. */}
+          <h1 className="text-xl font-bold">{session.tenant.name}</h1>
           {invoice.location?.address ? <p className="text-sm">{invoice.location.address}</p> : null}
+          {invoice.location?.city ? (
+            <p className="text-sm">
+              {invoice.location.city}
+              {invoice.location.state ? `, ${invoice.location.state}` : ""}
+              {invoice.location.zip ? ` ${invoice.location.zip}` : ""}
+            </p>
+          ) : null}
           {invoice.location?.phone ? <p className="text-sm">{invoice.location.phone}</p> : null}
         </div>
         <div className="ml-auto text-right">

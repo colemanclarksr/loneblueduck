@@ -5,6 +5,7 @@ import {
 } from "@/lib/reports";
 import { estimateToRepairOrder, repairOrderToInvoice } from "@/lib/convert";
 import { setStatus, assignTechnician } from "@/lib/repairOrders";
+import { recalculate } from "@/lib/estimates";
 import { takePayment, refundPayment, voidInvoice } from "@/lib/invoices";
 import { makeShop, makeEstimate, testDb } from "./helpers";
 
@@ -263,6 +264,23 @@ describe("approval rate", () => {
     expect(rate.sent).toBe(3);
     expect(rate.approved).toBe(2);
     expect(rate.ratePct).toBe(67);
+  });
+
+  it("still counts an approved estimate after it becomes a repair order", async () => {
+    const shop = await makeShop(db, { taxRate: 0 });
+    const est = await makeEstimate(db, shop, JOB, { status: "APPROVED" });
+    // The fixture leaves header totals at zero on purpose; the app writes them
+    // back after every line change, so do the same before reporting on them.
+    await recalculate(shop.tenant.id, est.id);
+    await estimateToRepairOrder(db, { estimateId: est.id });
+
+    // Converting moves the estimate to CONVERTED. Counting only APPROVED would
+    // drop exactly the estimates the shop closed, reporting 0% on a good week.
+    const rate = await approvalRate(shop.tenant.id, WIDE);
+    expect(rate.sent).toBe(1);
+    expect(rate.approved).toBe(1);
+    expect(rate.ratePct).toBe(100);
+    expect(rate.approvedCents).toBe(15_000);
   });
 
   it("does not divide by zero when nothing was answered", async () => {

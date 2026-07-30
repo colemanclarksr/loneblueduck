@@ -265,13 +265,17 @@ export async function approvalRate(tenantId: string, range: Range) {
   const answered = await db.estimate.findMany({
     where: {
       tenantId,
-      status: { in: ["APPROVED", "DECLINED"] },
+      // CONVERTED belongs here. An estimate that became a repair order was
+      // approved -- it just did not stay in the APPROVED status. Counting only
+      // APPROVED drops every estimate the shop actually acted on, which biases
+      // the rate toward zero exactly when business is good.
+      status: { in: ["APPROVED", "CONVERTED", "DECLINED"] },
       approvedAt: { gte: range.from, lt: range.to },
     },
     select: { status: true, totalCents: true },
   });
 
-  const approved = answered.filter((e) => e.status === "APPROVED");
+  const approved = answered.filter((e) => e.status !== "DECLINED");
   return {
     sent: answered.length,
     approved: approved.length,

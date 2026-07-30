@@ -290,7 +290,9 @@ export async function getEstimateByToken(token: string) {
   if (!token) return null;
   const estimate = await db.estimate.findUnique({
     where: { approvalToken: token },
-    include: { customer: true, vehicle: true, location: true },
+    // Tenant as well as location: the heading a customer reads is the business
+    // name, not the shop's internal label for the building.
+    include: { customer: true, vehicle: true, location: true, tenant: { select: { name: true } } },
   });
   if (!estimate) return null;
 
