@@ -164,11 +164,20 @@ export async function convertAction(_prev: FormState, form: FormData): Promise<F
   const estimateId = str(form, "estimateId");
   if (!estimateId) return { error: "Missing estimate." };
 
+  // The conversion takes a bare id, so the tenant check has to happen here.
+  // Without it a signed-in user could post another shop's estimate id and
+  // convert work that is not theirs.
+  const owned = await db.estimate.findFirst({
+    where: { id: estimateId, tenantId: session.tenant.id },
+    select: { id: true },
+  });
+  if (!owned) return { error: "That estimate no longer exists." };
+
   let roId: string;
   try {
     // Goes through the guarded conversion; nothing here re-implements it.
     const ro = await estimateToRepairOrder(db, {
-      estimateId,
+      estimateId: owned.id,
       advisorId: session.user.id,
     });
     roId = ro.id;
