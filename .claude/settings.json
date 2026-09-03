@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__robinhood(-trading)?__(place_equity_order|place_option_order|place_crypto_order|exercise_option)",
+        "hooks": [
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/robinhood_cap.py\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__robinhood(-trading)?__(place_equity_order|place_option_order|place_crypto_order)",
+        "hooks": [
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/robinhood_cap.py\"" }
+        ]
+      }
+    ]
+  }
+}

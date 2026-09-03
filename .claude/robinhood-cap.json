@@ -1,0 +1,4 @@
+{
+  "cap_usd": 500,
+  "note": "Hard cap on open exposure for the Robinhood MCP. Enforced by .claude/hooks/robinhood_cap.py. Change the number here, nowhere else."
+}
