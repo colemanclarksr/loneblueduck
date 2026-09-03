@@ -9,3 +9,4 @@ Capped speculation. Hard cap: **$500 open exposure**, enforced by a hook, not by
 - Check room before proposing a trade: `python3 .claude/hooks/robinhood_cap.py status`
 - If an order was cancelled or failed after being recorded, correct the ledger with `set-exposure`.
 - Trading never appears in any income projection or business plan.
+- Strategy rules live in `.claude/trading-strategy.md`. Read it before proposing any trade. A blank rule means no trade.
