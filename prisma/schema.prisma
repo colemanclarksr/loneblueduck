@@ -1,0 +1,785 @@
+// Auto POS — data model, per the Master Engineering Blueprint v1.0 §10.
+//
+// Blueprint §8 rules applied throughout:
+//   - every tenant-owned table carries tenantId
+//   - indexes on tenantId, status, createdAt, customerId, vehicleId
+//   - no raw cardholder data anywhere; processor references only
+//
+// Estimates, repair orders and invoices are three separate tables, per §10.
+// Line items are polymorphic across all three (parentType + parentId), also
+// per §10, which means line items are COPIED at each conversion.
+//
+// That copying is the one dangerous thing in this design: if a copy is partial
+// or a total is recomputed from different inputs, the invoice stops matching
+// what the customer approved. Every conversion therefore goes through
+// lib/convert.ts, which copies verbatim inside a transaction and refuses to
+// commit if the copied totals do not equal the source totals. Do not write
+// conversions by hand anywhere else.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  // SQLite locally so there is no server to run. Blueprint §9 specifies
+  // Postgres for production: change this to "postgresql" and point
+  // DATABASE_URL at the server. No model changes required.
+  provider = "sqlite"
+}
+
+// ============================================================ tenancy
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  status    TenantStatus @default(ACTIVE)
+  plan      String       @default("starter")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  locations           Location[]
+  memberships         Membership[]
+  customers           Customer[]
+  vehicles            Vehicle[]
+  estimates           Estimate[]
+  repairOrders        RepairOrder[]
+  invoices            Invoice[]
+  lineItems           LineItem[]
+  payments            Payment[]
+  refunds             Refund[]
+  inventoryItems      InventoryItem[]
+  inventoryMovements  InventoryMovement[]
+  inspectionTemplates InspectionTemplate[]
+  inspectionResults   InspectionResult[]
+  messages            Message[]
+  auditLogs           AuditLog[]
+  servicePackages     ServicePackage[]
+  attachments         Attachment[]
+  notes               Note[]
+}
+
+model Location {
+  id             String  @id @default(cuid())
+  tenantId       String
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  // Defaults a new document inherits. Blueprint §7 Admin.
+  laborRateCents Int     @default(12500)
+  taxRate        Float   @default(0)
+  receiptFooter  String?
+  createdAt      DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
+
+  @@index([tenantId])
+}
+
+// Authenticated person. Global, not tenant-scoped: one login can work at more
+// than one shop, which is normal for owners of two locations and for
+// bookkeepers serving several clients.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  phone        String?
+  passwordHash String?
+  mfaEnabled   Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessions        Session[]
+  memberships     Membership[]
+  advisedOrders   RepairOrder[]      @relation("ROAdvisor")
+  assignedOrders  RepairOrder[]      @relation("ROTechnician")
+  authoredEstimates Estimate[]       @relation("EstimateAuthor")
+  notes           Note[]
+  auditLogs       AuditLog[]
+  movements       InventoryMovement[]
+  approvedRefunds Refund[]
+  orderEvents     RepairOrderEvent[]
+}
+
+// Server-side sessions. The cookie carries an opaque id and nothing else, so
+// revoking a session is a delete rather than waiting out a token's expiry.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  // Which tenant this session is currently acting inside. A user with two
+  // memberships switches by updating this, never by trusting a request param.
+  tenantId  String?
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Blueprint §5.
+enum Role {
+  OWNER
+  MANAGER
+  SERVICE_ADVISOR
+  TECHNICIAN
+  COUNTER_CLERK
+  BOOKKEEPER
+}
+
+model Membership {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String
+  // Null means access to every location in the tenant.
+  locationId      String?
+  role            Role     @default(TECHNICIAN)
+  active          Boolean  @default(true)
+  // Never exposed to TECHNICIAN or COUNTER_CLERK.
+  hourlyCostCents Int?
+  createdAt       DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// ================================================= customers & vehicles
+
+enum CustomerType {
+  RETAIL
+  FLEET
+  WHOLESALE
+}
+
+model Customer {
+  id               String       @id @default(cuid())
+  tenantId         String
+  type             CustomerType @default(RETAIL)
+  firstName        String?
+  lastName         String?
+  company          String?
+  phone            String?
+  // Digits only, maintained on write. A customer phoning the counter is looked
+  // up by number, and "(909) 555-0142" must match a search for "9095550142".
+  phoneDigits      String?
+  email            String?
+  address          String?
+  city             String?
+  state            String?
+  zip              String?
+  // Net terms in days for fleet accounts. Null = due on receipt.
+  billingTermsDays Int?
+  taxExempt        Boolean      @default(false)
+  taxExemptId      String?
+  // §7: communication opt-in/out, checked before every send.
+  smsOptOut        Boolean      @default(false)
+  emailOptOut      Boolean      @default(false)
+  tags             String?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
+  messages     Message[]
+
+  @@index([tenantId])
+  @@index([tenantId, lastName])
+  @@index([tenantId, company])
+  @@index([tenantId, phoneDigits])
+  @@index([phone])
+}
+
+model Vehicle {
+  id            String   @id @default(cuid())
+  tenantId      String
+  customerId    String
+  vin           String?
+  plate         String?
+  year          Int?
+  make          String?
+  model         String?
+  trim          String?
+  engine        String?
+  color         String?
+  tireSize      String?
+  // Latest known reading. Per-visit readings live on the document.
+  mileage       Int?
+  warrantyNotes String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  estimates    Estimate[]
+  repairOrders RepairOrder[]
+  invoices     Invoice[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([vin])
+  @@index([plate])
+}
+
+// ============================================================ documents
+// Three tables, per §10. Line items are polymorphic across all three.
+
+// Which table a line item, attachment or note belongs to.
+enum DocType {
+  ESTIMATE
+  REPAIR_ORDER
+  INVOICE
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT       // approval link out
+  APPROVED   // customer said yes
+  DECLINED   // customer said no
+  EXPIRED
+  CONVERTED  // became a repair order
+}
+
+model Estimate {
+  id         String         @id @default(cuid())
+  tenantId   String
+  locationId String?
+  number     Int
+  customerId String
+  vehicleId  String
+  authorId   String?
+  status     EstimateStatus @default(DRAFT)
+
+  mileageIn    Int?
+  complaint    String?
+  customerNote String?
+  internalNote String?
+
+  // Integer cents, denormalised from line items on every write.
+  subtotalCents Int   @default(0)
+  discountPct   Float @default(0)
+  discountCents Int   @default(0)
+  taxRate       Float @default(0)
+  taxCents      Int   @default(0)
+  totalCents    Int   @default(0)
+
+  // Captured when the customer approves. §7: signatures.
+  approvalSignature String?
+  approvalIp        String?
+  // Random token for the public approval link, so the URL is unguessable.
+  approvalToken     String?  @unique
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  sentAt     DateTime?
+  approvedAt DateTime?
+  expiresAt  DateTime?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location     Location?     @relation(fields: [locationId], references: [id])
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  vehicle      Vehicle       @relation(fields: [vehicleId], references: [id])
+  author       User?         @relation("EstimateAuthor", fields: [authorId], references: [id])
+  repairOrders RepairOrder[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([vehicleId])
+}
+
+enum RepairOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETE
+  INVOICED
+  CANCELLED
+}
+
+model RepairOrder {
+  id         String            @id @default(cuid())
+  tenantId   String
+  locationId String?
+  number     Int
+  // Null when the RO was written from scratch at the counter, which is normal
+  // for walk-in oil changes and inspections.
+  estimateId String?
+  customerId String
+  vehicleId  String
+  advisorId  String?
+  technicianId String?
+  status     RepairOrderStatus @default(OPEN)
+
+  mileageIn    Int?
+  complaint    String?
+  customerNote String?
+  internalNote String?
+  promisedAt   DateTime?
+
+  subtotalCents Int   @default(0)
+  discountPct   Float @default(0)
+  discountCents Int   @default(0)
+  taxRate       Float @default(0)
+  taxCents      Int   @default(0)
+  totalCents    Int   @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location    Location?          @relation(fields: [locationId], references: [id])
+  estimate    Estimate?          @relation(fields: [estimateId], references: [id])
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle            @relation(fields: [vehicleId], references: [id])
+  advisor     User?              @relation("ROAdvisor", fields: [advisorId], references: [id])
+  technician  User?              @relation("ROTechnician", fields: [technicianId], references: [id])
+  invoices    Invoice[]
+  events      RepairOrderEvent[]
+  inspections InspectionResult[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([estimateId])
+}
+
+// Status history, per §16 Prompt 3.
+model RepairOrderEvent {
+  id            String             @id @default(cuid())
+  repairOrderId String
+  userId        String?
+  from          RepairOrderStatus?
+  to            RepairOrderStatus
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@index([repairOrderId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN     // finalised, balance due
+  PARTIAL  // partially paid
+  PAID
+  VOID
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  locationId    String?
+  number        Int
+  repairOrderId String
+  customerId    String
+  vehicleId     String
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotalCents    Int   @default(0)
+  discountPct      Float @default(0)
+  discountCents    Int   @default(0)
+  taxRate          Float @default(0)
+  taxCents         Int   @default(0)
+  totalCents       Int   @default(0)
+  paidCents        Int   @default(0)
+  balanceDueCents  Int   @default(0)
+
+  // Net terms copied from the customer at finalisation, so changing a fleet
+  // account's terms later does not silently restate old invoices.
+  termsDays Int?
+  dueAt     DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  finalizedAt DateTime?
+  paidAt      DateTime?
+  voidedAt    DateTime?
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location    Location?   @relation(fields: [locationId], references: [id])
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id])
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
+  payments    Payment[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([repairOrderId])
+}
+
+enum LineKind {
+  PART
+  LABOR
+  FEE     // shop supplies, disposal, EPA
+  SUBLET  // sent out, e.g. machine shop
+  TIRE
+}
+
+// Polymorphic across estimates, repair orders and invoices, per §10.
+// Prisma has no polymorphic relations, so parentType + parentId carry it and
+// there is no foreign key. Always filter on BOTH columns plus tenantId.
+model LineItem {
+  id         String  @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+
+  kind            LineKind
+  name            String
+  sku             String?
+  // Links back to stock so selling decrements inventory.
+  inventoryItemId String?
+  // Groups lines into a repair on screen ("Front brakes"), without needing a
+  // jobs table. Purely a display and approval grouping.
+  section         String?
+  // Hours for LABOR, quantity otherwise.
+  qty        Float   @default(1)
+  // What the shop pays. Margin reporting only; never shown to the customer.
+  costCents  Int     @default(0)
+  // What the customer pays, per unit or per hour.
+  priceCents Int     @default(0)
+  taxable    Boolean @default(true)
+  // A customer can approve the brakes and decline the struts. Declined lines
+  // are carried forward but excluded from totals.
+  approved   Boolean @default(true)
+  declinedAt DateTime?
+  sort       Int     @default(0)
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([parentType, parentId])
+  @@index([inventoryItemId])
+}
+
+// A repair the shop sells constantly, dropped onto a document in one tap.
+// Items are copied on use, so editing the package never rewrites history.
+model ServicePackage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  itemsJson String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ============================================================ payments
+// §12: no raw card data. References, brand, last4 and status only.
+
+enum PaymentMethod {
+  CARD
+  CASH
+  CHECK
+  ACH
+  HOUSE_ACCOUNT
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  VOIDED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  tenantId     String
+  invoiceId    String
+  amountCents  Int
+  tipCents     Int           @default(0)
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  // Which processor handled it, e.g. "wholesale_payments". Null for cash.
+  processor    String?
+  processorRef String?
+  responseCode String?
+  brand        String?
+  last4        String?
+  // Cheque number, cash drawer reference, etc.
+  reference    String?
+  // Batch/payout reference, per §7.
+  batchRef     String?
+  createdAt    DateTime      @default(now())
+  capturedAt   DateTime?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([processorRef])
+}
+
+model Refund {
+  id           String   @id @default(cuid())
+  tenantId     String
+  paymentId    String
+  amountCents  Int
+  reasonCode   String?
+  reason       String?
+  approvedById String?
+  processorRef String?
+  createdAt    DateTime @default(now())
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  approvedBy User?   @relation(fields: [approvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+}
+
+// =========================================================== inventory
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  tenantId     String
+  sku          String
+  name         String
+  category     String?
+  vendor       String?
+  tireSize     String?
+  qtyOnHand    Float    @default(0)
+  costCents    Int      @default(0)
+  priceCents   Int      @default(0)
+  reorderPoint Float    @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+  lineItems LineItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  itemId    String
+  // Negative for a sale, positive for a receipt.
+  qtyDelta  Float
+  reason    String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  item   InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user   User?         @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([itemId])
+}
+
+// ========================================================= inspections
+
+model InspectionTemplate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  serviceType String?
+  itemsJson   String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  results InspectionResult[]
+
+  @@index([tenantId])
+}
+
+enum InspectionStatus {
+  IN_PROGRESS
+  COMPLETE
+  SENT
+}
+
+model InspectionResult {
+  id            String           @id @default(cuid())
+  tenantId      String
+  repairOrderId String
+  templateId    String?
+  status        InspectionStatus @default(IN_PROGRESS)
+  // Unguessable, and the only credential on the customer-facing view. Minted
+  // when the inspection is sent, not when it is started, so an unfinished
+  // checklist has no reachable URL.
+  shareToken    String?          @unique
+  createdAt     DateTime         @default(now())
+  completedAt   DateTime?
+  sentAt        DateTime?
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder         @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  template    InspectionTemplate? @relation(fields: [templateId], references: [id])
+  items       InspectionItem[]
+
+  @@index([tenantId])
+  @@index([repairOrderId])
+}
+
+enum Condition {
+  GREEN
+  YELLOW
+  RED
+  NA
+}
+
+model InspectionItem {
+  id        String    @id @default(cuid())
+  resultId  String
+  // "Brakes", "Tires", "Under the hood" -- what a 40-point checklist needs so
+  // it reads as sections rather than forty loose rows.
+  section   String?
+  label     String
+  condition Condition @default(NA)
+  notes     String?
+  // Comma-separated object keys. Photos and video, per §6.3.
+  mediaUrls String?
+  sort      Int       @default(0)
+
+  result InspectionResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@index([resultId])
+}
+
+// ============================================ attachments, notes, messages
+
+// Photos and documents, polymorphic like line items.
+model Attachment {
+  id         String   @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+  url        String
+  caption    String?
+  // Whether the customer sees it on the estimate or invoice.
+  shared     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([parentType, parentId])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  tenantId   String
+  parentType DocType
+  parentId   String
+  authorId   String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id])
+
+  @@index([tenantId])
+  @@index([parentType, parentId])
+}
+
+enum MessageChannel {
+  SMS
+  EMAIL
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+// Every text and email sent. The shop can prove it told the customer, and
+// opt-outs and failures are auditable.
+model Message {
+  id          String         @id @default(cuid())
+  tenantId    String
+  customerId  String?
+  parentType  DocType?
+  parentId    String?
+  channel     MessageChannel
+  template    String?
+  toAddress   String
+  body        String
+  status      MessageStatus  @default(QUEUED)
+  providerRef String?
+  error       String?
+  createdAt   DateTime       @default(now())
+  sentAt      DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([parentType, parentId])
+}
+
+// ============================================================ audit
+// §8: every payment, refund, post-payment invoice edit, tax change,
+// permission change and inventory adjustment is logged.
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  entityType String
+  entityId   String
+  action     String
+  beforeJson String?
+  afterJson  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+}
