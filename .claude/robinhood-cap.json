@@ -1,4 +1,6 @@
 {
-  "cap_usd": 500,
-  "note": "Hard cap on open exposure for the Robinhood MCP. Enforced by .claude/hooks/robinhood_cap.py. Change the number here, nowhere else."
+  "cap_usd": 300,
+  "per_order_max_usd": 100,
+  "options_allowed": false,
+  "note": "Matches .claude/trading-strategy.md rule 3: max $300 deployed, max $100 per position, no options. Enforced by .claude/hooks/robinhood_cap.py. Change numbers here and in the rulebook together, at a weekly review."
 }

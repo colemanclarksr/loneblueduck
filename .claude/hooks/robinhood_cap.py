@@ -31,9 +31,13 @@ def money(v):
     return d if d > 0 else None
 
 
-def load_cap():
+def load_config():
     with open(CONFIG) as f:
-        return Decimal(str(json.load(f)["cap_usd"]))
+        return json.load(f)
+
+
+def load_cap():
+    return Decimal(str(load_config()["cap_usd"]))
 
 
 def load_ledger():
@@ -91,10 +95,15 @@ def notional(tool, p):
 
 def decide(tool_name, p):
     tool = short_name(tool_name)
-    cap = load_cap()
+    cfg = load_config()
+    cap = Decimal(str(cfg["cap_usd"]))
+    per_order = money(cfg.get("per_order_max_usd"))
     ledger = load_ledger()
     exposure = Decimal(str(ledger.get("exposure_usd", "0")))
     remaining = cap - exposure
+
+    if not cfg.get("options_allowed", False) and tool in ("place_option_order", EXERCISE_TOOL):
+        return False, "BLOCKED by rulebook: options are banned (trading-strategy.md rule 2)."
 
     if tool == EXERCISE_TOOL:
         return False, f"BLOCKED by ${cap} trading cap: exercising options requires cash beyond the cap. Sell to close instead."
@@ -104,10 +113,12 @@ def decide(tool_name, p):
         return True, None
     if amt is None:
         return False, f"BLOCKED by ${cap} trading cap: {why}."
+    if per_order is not None and amt > per_order:
+        return False, f"BLOCKED by rulebook: this order is ${amt:.2f}, max per position is ${per_order:.2f} (rule 3)."
     if amt > remaining:
         return False, (
-            f"BLOCKED by ${cap} trading cap: this order is ${amt:.2f}, open exposure is "
-            f"${exposure:.2f}, remaining room is ${remaining:.2f}. Reduce the order or sell something first."
+            f"BLOCKED by ${cap} deployed cap (rule 3): this order is ${amt:.2f}, deployed is "
+            f"${exposure:.2f}, room is ${remaining:.2f}. Reduce the order or close something first."
         )
     return True, None
 

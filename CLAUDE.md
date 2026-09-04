@@ -1,12 +1,12 @@
 # Robinhood trading rules
 
-Capped speculation. Hard cap: **$500 open exposure**, enforced by a hook, not by judgment.
+Capped speculation. Hook-enforced: **$300 max deployed, $100 max per position, no options.** Numbers live in `.claude/robinhood-cap.json`.
 
-- Never place an order without running the review/preview tool first and getting an explicit yes from Coleman.
+- Read `.claude/trading-strategy.md` at the start of every session. It is the rulebook. All nine rules must pass or no trade is proposed, and Claude names the rule that failed.
+- Never place an order without running the review/preview tool first, showing the TRADE PROPOSAL block, and getting an explicit "yes" from Coleman.
 - Buys must be priceable: use `dollar_amount`, or a quantity with a limit or stop price. Plain market orders by share count are blocked.
-- Options: buy-to-open with a limit price only. No short or credit positions. No exercising. Closing orders are always allowed.
-- Sells are always allowed.
-- Check room before proposing a trade: `python3 .claude/hooks/robinhood_cap.py status`
+- Options and exercising are blocked outright. Sells and stop orders are always allowed.
+- Check room before proposing: `python3 .claude/hooks/robinhood_cap.py status`
 - If an order was cancelled or failed after being recorded, correct the ledger with `set-exposure`.
+- Every closed trade gets one line in `trades.md` before the session ends.
 - Trading never appears in any income projection or business plan.
-- Strategy rules live in `.claude/trading-strategy.md`. Read it before proposing any trade. A blank rule means no trade.
