@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "robinhood-cap.json")
 LEDGER = os.path.join(ROOT, "robinhood-cap-ledger.json")
+APPROVAL = os.path.join(ROOT, "guard-approval.json")
 
 ORDER_TOOLS = ("place_equity_order", "place_option_order", "place_crypto_order")
 EXERCISE_TOOL = "exercise_option"
@@ -93,6 +94,34 @@ def notional(tool, p):
     return "buy", None, "unknown tool"
 
 
+def guard_check(tool, p, amt):
+    """Execution guard: a buy needs a live, unused approval for this symbol, size, and price."""
+    import time
+    if tool == "place_crypto_order":
+        return False, "BLOCKED — crypto is outside the governing strategy (trading-engine.md)"
+    if not os.path.exists(APPROVAL):
+        return False, "BLOCKED — GUARD NOT RUN: run python3 tools/guard.py order.json with live data first"
+    a = json.load(open(APPROVAL))
+    if a.get("used"):
+        return False, "BLOCKED — DUPLICATE ORDER: approval already used, run the guard again"
+    if time.time() > float(a.get("expires_at", 0)):
+        return False, "BLOCKED — DATA NOT VERIFIED: guard approval expired, refresh and rerun the guard"
+    if (p.get("symbol") or "").upper() != a.get("symbol"):
+        return False, f"BLOCKED — GUARD MISMATCH: approval is for {a.get('symbol')}, order is {p.get('symbol')}"
+    otype = (p.get("type") or "").lower()
+    if a.get("order_type_allowed") == "limit" and otype != "limit":
+        return False, "BLOCKED — LIMIT ORDER REQUIRED by guard"
+    lp = money(p.get("limit_price"))
+    if otype == "limit" and lp is not None and lp > Decimal(str(a["max_limit_price"])):
+        return False, f"BLOCKED — PRICE EXTENDED: limit {lp} above guard zone top {a['max_limit_price']}"
+    qty = money(p.get("quantity"))
+    if qty is not None and qty > Decimal(str(a["shares"])):
+        return False, f"BLOCKED — SIZE: {qty} shares exceeds guard approval of {a['shares']}"
+    if amt > Decimal(str(a["max_notional"])):
+        return False, f"BLOCKED — SIZE: ${amt:.2f} exceeds guard approval of ${a['max_notional']}"
+    return True, None
+
+
 def decide(tool_name, p):
     tool = short_name(tool_name)
     cfg = load_config()
@@ -113,6 +142,9 @@ def decide(tool_name, p):
         return True, None
     if amt is None:
         return False, f"BLOCKED by ${cap} trading cap: {why}."
+    ok, gwhy = guard_check(tool, p, amt)
+    if not ok:
+        return False, gwhy
     if per_order is not None and amt > per_order:
         return False, f"BLOCKED by rulebook: this order is ${amt:.2f}, max per position is ${per_order:.2f} (rule 3)."
     if amt > remaining:
@@ -138,6 +170,8 @@ def record(tool_name, p, response):
     ledger = load_ledger()
     exposure = Decimal(str(ledger.get("exposure_usd", "0")))
     exposure = exposure + amt if side == "buy" else max(Decimal("0"), exposure - amt)
+    if side == "buy" and os.path.exists(APPROVAL):
+        a = json.load(open(APPROVAL)); a["used"] = True; a["used_ref_id"] = p.get("ref_id"); json.dump(a, open(APPROVAL, "w"), indent=2)
     ledger["exposure_usd"] = f"{exposure:.2f}"
     ledger.setdefault("orders", []).append(
         {"tool": tool, "side": side, "symbol": p.get("symbol"), "usd": f"{amt:.2f}", "ref_id": p.get("ref_id")}
