@@ -60,7 +60,7 @@ def main():
         row = json.loads(json.dumps(TEMPLATE))
         row.update({k: v for k, v in e.items() if k in TEMPLATE})
         row["date"] = row["date"] or date.today().isoformat()
-        for req in ("ticker", "catalyst", "entry_price", "stop_price", "target_price"):
+        for req in ("ticker", "entry_price", "stop_price"):
             if not row.get(req):
                 print(f"refused: {req} is required before a trade is journaled"); sys.exit(1)
         rows.append(row); save(rows); print(f"opened {row['ticker']} @ {row['entry_price']} stop {row['stop_price']} target {row['target_price']}")
