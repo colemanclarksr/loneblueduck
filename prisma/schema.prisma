@@ -63,6 +63,8 @@ model Tenant {
   servicePackages     ServicePackage[]
   attachments         Attachment[]
   notes               Note[]
+  technicians         Technician[]
+  technicianJobs      TechnicianJob[]
 }
 
 model Location {
@@ -86,6 +88,7 @@ model Location {
   estimates    Estimate[]
   repairOrders RepairOrder[]
   invoices     Invoice[]
+  technicians  Technician[]
 
   @@index([tenantId])
 }
@@ -113,6 +116,7 @@ model User {
   movements       InventoryMovement[]
   approvedRefunds Refund[]
   orderEvents     RepairOrderEvent[]
+  technicianProfiles Technician[]
 }
 
 // Server-side sessions. The cookie carries an opaque id and nothing else, so
@@ -365,6 +369,7 @@ model RepairOrder {
   invoices    Invoice[]
   events      RepairOrderEvent[]
   inspections InspectionResult[]
+  technicianJobs TechnicianJob[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status])
@@ -388,6 +393,92 @@ model RepairOrderEvent {
   user        User?       @relation(fields: [userId], references: [id])
 
   @@index([repairOrderId])
+}
+
+// A person who turns wrenches.
+//
+// Deliberately not the same thing as a User. Plenty of shops track hours for
+// staff who never log in, and a tech's cost per hour has nothing to do with
+// authentication -- tying the two together means you cannot hire someone
+// without also issuing them a password.
+model Technician {
+  id         String  @id @default(cuid())
+  tenantId   String
+  locationId String?
+  // Set when this tech also has a login. Null for staff tracked but not given
+  // an account.
+  userId     String?
+
+  name  String
+  phone String?
+  email String?
+
+  // What the tech costs the shop per hour worked. Feeds gross profit; never
+  // shown to a customer, and TECHNICIAN role cannot read it.
+  //
+  // Membership.hourlyCostCents also exists and is left alone: it covers staff
+  // payroll generally, including people who never touch a repair order. This
+  // field is the source of truth for labor cost ON A TICKET, because it is the
+  // only one that exists for a tech without a login.
+  hourlyCostCents Int     @default(0)
+  active          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location?       @relation(fields: [locationId], references: [id])
+  user     User?           @relation(fields: [userId], references: [id])
+  jobs     TechnicianJob[]
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([userId])
+}
+
+// Time a technician spent on a repair order, against the hours it was sold for.
+//
+// billedHours / actualHours is efficiency, the number shops manage techs by.
+// A job is worked in bursts -- a tech gets pulled onto a comeback and returns
+// an hour later -- so actual time accumulates across many clock-on/off cycles
+// rather than being one started/stopped pair.
+//
+// Accumulated time is stored as whole minutes, not hours. Adding fractional
+// hours repeatedly is exactly the float drift lib/money.ts avoids for money,
+// and efficiency is a ratio a tech's pay may depend on.
+model TechnicianJob {
+  id            String @id @default(cuid())
+  tenantId      String
+  repairOrderId String
+  technicianId  String
+  // The labor line this time is against. Null for time booked to the ticket
+  // as a whole, e.g. diagnosis before any line exists.
+  lineItemId    String?
+
+  // Set while the clock is running, cleared on clock-off. A non-null value is
+  // what makes a job "currently being worked".
+  startedAt DateTime?
+  // When the clock was last stopped. History only; totals come from actualMinutes.
+  stoppedAt DateTime?
+
+  // Hours the customer is charged, copied from the labor line when it is sold.
+  billedHours   Float @default(0)
+  // Wall-clock minutes actually worked, summed across every cycle.
+  actualMinutes Int   @default(0)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  technician  Technician  @relation(fields: [technicianId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, repairOrderId])
+  @@index([tenantId, technicianId])
+  @@index([technicianId, startedAt])
 }
 
 enum InvoiceStatus {
