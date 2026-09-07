@@ -1,6 +1,6 @@
 {
-  "cap_usd": 300,
-  "per_order_max_usd": 100,
+  "cap_usd": 1000,
+  "per_order_max_usd": 250,
   "options_allowed": false,
-  "note": "Matches .claude/trading-strategy.md rule 3: max $300 deployed, max $100 per position, no options. Enforced by .claude/hooks/robinhood_cap.py. Change numbers here and in the rulebook together, at a weekly review."
+  "note": "Matches trading-engine.md: $1,000 cash account, no margin, normal position $200-250. Enforced by .claude/hooks/robinhood_cap.py. Change here and in the engine doc together."
 }

@@ -150,10 +150,6 @@ The objective is NOT maximum trading frequency. The objective is asymmetric oppo
 
 ---
 
-## Sandbox limits layered on top of this ROLE (hook-enforced, not strategy)
+## Sandbox limits layered on top of this ROLE
 
-- Risk basis: $500 sandbox capital. 0.50% = $2.50 per trade, 1.00% max = $5.00.
-- Max $300 deployed, max $100 per position, no options, no crypto under this ROLE.
-- Kill switch: $75 realized loss since start, or 3 consecutive losers, or Coleman says stop. Trading halts until Coleman restarts it in writing.
-- Every order: run the review tool, show the section 17 block, wait for an explicit "yes".
-- Every closed trade goes in `trades.json` via `tools/journal.py` and one line in `trades.md`.
+Numbers are set by `trading-engine.md`: $1,000 cash account, 0.75% risk per trade, drawdown tiers, $250 per order, no options, no margin. See CLAUDE.md for procedure.
