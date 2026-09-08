@@ -10,8 +10,8 @@ GREEN: healthy environment for momentum longs. Normal scanning and new positions
 YELLOW: mixed/selective environment. Only A/A+ candidates advance.
 RED: unfavorable for new momentum longs. Do not recommend new long positions. Return: CASH / NO NEW LONGS.
 
-## STEP 2 — LIQUIDITY FILTER
-Prefer price >= $10, average daily dollar volume >= $25 million, adequate liquidity for clean execution. Avoid penny stocks, microcaps with poor liquidity, wide spreads, pump-and-dump behavior, unusual manipulation risk. A $1,000 account does NOT require cheap stocks. Fractional-share availability does not make a poor setup acceptable.
+## STEP 2 — UNIVERSE (amended by Coleman 2026-09-04)
+No price floor, no market cap floor, no dollar volume floor, no spread limit. Penny stocks, microcaps, and wide spreads are permitted as long as the candidate passes every other rule: trend template, relative strength, setup, pivot, volume confirmation, earnings filter, score, stop range, sizing. Report spread and dollar volume on every candidate so the cost is visible. Wide spreads are executed with limit orders only.
 
 ## STEP 3 — MINERVINI TREND TEMPLATE
 Current price > 50 SMA, > 150 SMA, > 200 SMA. 50 SMA > 150 SMA. 150 SMA > 200 SMA. 200 SMA trending upward. Prefer price within approximately 25% of 52-week high, strong relative strength versus SPY and versus sector/industry. Stocks making or approaching new highs receive preference. DO NOT search for "cheap" stocks that have collapsed. WE BUY STRENGTH.

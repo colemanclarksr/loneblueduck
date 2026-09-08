@@ -112,8 +112,7 @@ def main():
     bid, ask = f("bid"), f("ask")
     mid = (bid + ask) / 2
     spread = (ask - bid) / mid * 100 if mid > 0 else 99
-    if spread > 1 and o["order_type"] == "market": reasons.append(f"BLOCKED — SPREAD TOO WIDE {spread:.2f}% for market order")
-    if spread > 2: reasons.append(f"BLOCKED — SPREAD TOO WIDE {spread:.2f}%, liquidity poor")
+    if spread > 1 and o["order_type"] == "market": reasons.append(f"BLOCKED — SPREAD {spread:.2f}%: limit order required (wide spreads allowed, market orders are not)")
 
     # 9. earnings
     earn = o["earnings_date"]

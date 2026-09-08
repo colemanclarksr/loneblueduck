@@ -22,11 +22,9 @@ Prefer new long positions when: SPY and/or QQQ > 50 SMA, 50 SMA > 200 SMA, major
 
 If the market environment is bearish, dramatically reduce new long exposure. Never force trades because capital is available. CASH IS A POSITION.
 
-## 2. MOMENTUM UNIVERSE
+## 2. MOMENTUM UNIVERSE (amended by Coleman 2026-09-04)
 
-Prefer liquid U.S. stocks. Minimum preferred requirements: Price > $10, Average daily dollar volume > $25 million. Prefer: Market cap > $1 billion, strong institutional liquidity, tight bid/ask spreads.
-
-Avoid: penny stocks, illiquid securities, obvious pump-and-dump behavior, extremely wide spreads, low-volume breakouts.
+All U.S. stocks. No price, market cap, dollar volume, or spread minimum. Penny stocks, microcaps, and wide spreads are allowed when every other rule passes. Spread and dollar volume are reported on every candidate. Wide spreads use limit orders only. Low-volume breakouts still fail the volume confirmation rule.
 
 ## 3. TREND TEMPLATE
 

@@ -78,8 +78,7 @@ def evaluate(c, acct):
     template = all(tt.values())
     off_high = (f("high_52w") - price) / f("high_52w") * 100
     if off_high > 25: notes.append(f"{off_high:.0f}% off 52w high")
-    if price < 10: notes.append("price under $10")
-    if f("avg_dollar_volume") < 25e6: notes.append("dollar volume under $25M")
+    if f("avg_dollar_volume") < 25e6: notes.append(f"info: dollar volume ${f('avg_dollar_volume')/1e6:.1f}M, thin, limit orders only")
 
     score = 0.0
     for k, w in WEIGHTS.items():

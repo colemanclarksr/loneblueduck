@@ -27,8 +27,8 @@ Before accepting BUY confirm: Momentum Score >=85, Grade A or A+, Minervini Tren
 ## 7. LIVE PIVOT CHECK
 EXTENSION = (CURRENT_PRICE - PIVOT) / PIVOT × 100. 0–2%: BUY permitted. 2–3%: only A+ setup. 3–5%: BLOCK BUY, return WATCH. >5%: BLOCK BUY, return EXTENDED — DO NOT CHASE. Never chase because the stock is moving rapidly.
 
-## 8. SPREAD CHECK
-SPREAD % = (ASK - BID) / MIDPOINT × 100. Prefer <=0.50%. If spread >1%: BLOCK normal market order. Reassess liquidity and use a controlled limit order only if the security remains suitable. If liquidity is poor: REJECT TRADE.
+## 8. SPREAD CHECK (amended by Coleman 2026-09-04)
+SPREAD % = (ASK - BID) / MIDPOINT × 100. Always reported. A wide spread does not reject the trade. If spread >1%: market orders are blocked, a limit order at or below the entry zone top is required. Position sizing already accounts for the spread through the entry price.
 
 ## 9. EARNINGS CHECK
 If earnings <=5 trading days away: BLOCK NEW BUY, return WATCH — EARNINGS RISK. If earnings date cannot be verified: BLOCK BUY.
