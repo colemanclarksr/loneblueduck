@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "SHEL",
+    "date": "2026-09-08",
+    "catalyst": "Oil over $99 on Iran conflict; energy leading group",
+    "pullback_number": null,
+    "entry_price": 95.29,
+    "stop_price": 90.0,
+    "stop_method": "structure (10 day low 90.05)",
+    "target_price": null,
+    "position_size_pct_risk": 0.53,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "new 52w high",
+      "2.0x volume pace",
+      "EPS +144%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": null,
+    "exit_reason": null,
+    "result_pct": null,
+    "post_win_review": {
+      "size_up_opportunity": "",
+      "matched_other_winners": "",
+      "ev_captured_pct": null,
+      "trackable_variables": [],
+      "one_sentence_setup_definition": ""
+    },
+    "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m."
+  }
+]
