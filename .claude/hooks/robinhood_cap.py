@@ -5,13 +5,20 @@ Runs as a Claude Code PreToolUse hook (blocks orders that would push open
 exposure past the cap) and PostToolUse hook (records placed orders in a
 ledger). Fails closed: anything the hook cannot price is denied.
 
+Exposure = cost basis of open positions plus resting buy orders. A sell only
+reduces exposure once it FILLS; a resting stop or limit sell leaves the
+ledger alone. If a resting order fills later (the hook never sees that), fix
+the ledger with `fill` or `set-exposure`.
+
 CLI:
-  robinhood_cap.py status                 show cap, exposure, remaining
-  robinhood_cap.py set-exposure <usd>     correct the ledger (cancel, bad fill)
-  robinhood_cap.py reset                  zero the ledger
+  robinhood_cap.py status                        cap, exposure, remaining, positions
+  robinhood_cap.py fill SYMBOL SIDE SHARES PRICE  record a fill the hook missed
+  robinhood_cap.py set-exposure <usd>            override the exposure total
+  robinhood_cap.py reset                         zero the ledger
 """
 import json
 import os
+import re
 import sys
 from decimal import Decimal, InvalidOperation
 
@@ -22,6 +29,7 @@ APPROVAL = os.path.join(ROOT, "guard-approval.json")
 
 ORDER_TOOLS = ("place_equity_order", "place_option_order", "place_crypto_order")
 EXERCISE_TOOL = "exercise_option"
+ZERO = Decimal("0")
 
 
 def money(v):
@@ -43,9 +51,12 @@ def load_cap():
 
 def load_ledger():
     if not os.path.exists(LEDGER):
-        return {"exposure_usd": "0", "orders": []}
+        return {"exposure_usd": "0", "positions": {}, "orders": []}
     with open(LEDGER) as f:
-        return json.load(f)
+        ledger = json.load(f)
+    ledger.setdefault("positions", {})
+    ledger.setdefault("orders", [])
+    return ledger
 
 
 def save_ledger(ledger):
@@ -78,7 +89,7 @@ def notional(tool, p):
             return "buy", None, "no legs"
         closing_only = all((l.get("position_effect") or "").lower() == "close" for l in legs)
         if closing_only:
-            return "sell", Decimal("0"), None
+            return "sell", ZERO, None
         short_open = any(
             (l.get("side") or "").lower() == "sell" and (l.get("position_effect") or "").lower() == "open"
             for l in legs
@@ -155,6 +166,58 @@ def decide(tool_name, p):
     return True, None
 
 
+# ---------------------------------------------------------------- ledger math
+
+def _field(text, name):
+    """Pull the first "name": value out of a JSON-ish response, or None."""
+    m = re.search(r'"%s"\s*:\s*"?([^",}\]]+)"?' % re.escape(name), text)
+    return m.group(1).strip() if m else None
+
+
+def parse_fill(text):
+    """Return (state, filled_shares, avg_price, order_id) from a broker response."""
+    state = (_field(text, "state") or "").lower()
+    filled = money(_field(text, "cumulative_quantity"))
+    avg = money(_field(text, "average_price"))
+    oid = _field(text, "id")
+    if state == "filled" and filled is None:
+        filled = money(_field(text, "quantity"))
+    return state, filled, avg, oid
+
+
+def apply_buy(ledger, symbol, shares, price):
+    """Add cost basis for a buy (a fill, or a resting order reserved at its limit)."""
+    pos = ledger["positions"].get(symbol, {"shares": "0", "cost_usd": "0"})
+    new_sh = Decimal(pos["shares"]) + shares
+    new_cost = Decimal(pos["cost_usd"]) + shares * price
+    ledger["positions"][symbol] = {"shares": f"{new_sh:.6f}", "cost_usd": f"{new_cost:.2f}"}
+
+
+def apply_sell(ledger, symbol, shares):
+    """Release cost basis pro rata for shares that actually sold. Returns usd released."""
+    pos = ledger["positions"].get(symbol)
+    if not pos or Decimal(pos["shares"]) <= 0:
+        return ZERO
+    have = Decimal(pos["shares"])
+    cost = Decimal(pos["cost_usd"])
+    sold = min(shares, have)
+    released = cost * sold / have
+    left_sh = have - sold
+    left_cost = cost - released
+    if left_sh <= 0:
+        del ledger["positions"][symbol]
+    else:
+        ledger["positions"][symbol] = {"shares": f"{left_sh:.6f}", "cost_usd": f"{left_cost:.2f}"}
+    return released
+
+
+def recompute(ledger):
+    total = sum(Decimal(v["cost_usd"]) for v in ledger["positions"].values())
+    total += sum(Decimal(o["usd"]) for o in ledger["orders"] if o.get("pending_buy"))
+    ledger["exposure_usd"] = f"{max(ZERO, total):.2f}"
+    return ledger
+
+
 def record(tool_name, p, response):
     tool = short_name(tool_name)
     if tool not in ORDER_TOOLS:
@@ -166,16 +229,50 @@ def record(tool_name, p, response):
         return
     side, amt, _ = notional(tool, p)
     if amt is None:
-        amt = Decimal("0")
+        amt = ZERO
+    symbol = (p.get("symbol") or "").upper()
+    qty = money(p.get("quantity")) or ZERO
+    state, filled, avg, oid = parse_fill(text)
     ledger = load_ledger()
-    exposure = Decimal(str(ledger.get("exposure_usd", "0")))
-    exposure = exposure + amt if side == "buy" else max(Decimal("0"), exposure - amt)
-    if side == "buy" and os.path.exists(APPROVAL):
-        a = json.load(open(APPROVAL)); a["used"] = True; a["used_ref_id"] = p.get("ref_id"); json.dump(a, open(APPROVAL, "w"), indent=2)
-    ledger["exposure_usd"] = f"{exposure:.2f}"
-    ledger.setdefault("orders", []).append(
-        {"tool": tool, "side": side, "symbol": p.get("symbol"), "usd": f"{amt:.2f}", "ref_id": p.get("ref_id")}
-    )
+    entry = {"tool": tool, "side": side, "symbol": symbol, "usd": f"{amt:.2f}",
+             "ref_id": p.get("ref_id"), "order_id": oid, "state": state or "unknown"}
+
+    if side == "buy":
+        if os.path.exists(APPROVAL):
+            a = json.load(open(APPROVAL))
+            a["used"] = True
+            a["used_ref_id"] = p.get("ref_id")
+            json.dump(a, open(APPROVAL, "w"), indent=2)
+        if filled and avg:
+            apply_buy(ledger, symbol, filled, avg)
+            entry["filled_shares"] = f"{filled}"
+            entry["fill_price"] = f"{avg}"
+            entry["usd"] = f"{filled * avg:.2f}"
+            rest = qty - filled
+            if rest > 0 and tool != "place_option_order":
+                # Partial fill: reserve the unfilled shares at the order price.
+                apply_buy(ledger, symbol, rest, amt / qty)
+                entry["reserved_shares"] = f"{rest}"
+        elif qty > 0 and tool != "place_option_order":
+            # Resting buy: reserve at the order price until it fills or is cancelled.
+            price = amt / qty
+            apply_buy(ledger, symbol, qty, price)
+            entry["pending_buy"] = False  # basis already counted in positions
+            entry["note"] = "resting buy reserved at order price; correct with `fill` after the real fill"
+        else:
+            entry["pending_buy"] = True
+    else:
+        if state == "filled" and filled:
+            released = apply_sell(ledger, symbol, filled)
+            entry["released_usd"] = f"{released:.2f}"
+            entry["filled_shares"] = f"{filled}"
+            if avg:
+                entry["fill_price"] = f"{avg}"
+        else:
+            entry["note"] = "sell placed, not filled; exposure unchanged until it fills"
+
+    ledger["orders"].append(entry)
+    recompute(ledger)
     save_ledger(ledger)
 
 
@@ -190,24 +287,46 @@ def deny(reason):
     sys.exit(0)
 
 
+def cli(argv):
+    cmd = argv[0]
+    cap = load_cap()
+    ledger = load_ledger()
+    if cmd == "status":
+        exp = Decimal(str(ledger.get("exposure_usd", "0")))
+        print(f"cap ${cap:.2f} | exposure ${exp:.2f} | remaining ${cap - exp:.2f} | orders {len(ledger['orders'])}")
+        for sym, pos in sorted(ledger["positions"].items()):
+            sh = Decimal(pos["shares"]); cost = Decimal(pos["cost_usd"])
+            print(f"  {sym}: {sh.normalize()} sh, basis ${cost:.2f} (${cost / sh:.2f}/sh)")
+    elif cmd == "fill":
+        if len(argv) != 5:
+            print("usage: fill SYMBOL buy|sell SHARES PRICE"); sys.exit(1)
+        sym, side, sh, px = argv[1].upper(), argv[2].lower(), Decimal(argv[3]), Decimal(argv[4])
+        if side == "buy":
+            apply_buy(ledger, sym, sh, px)
+        elif side == "sell":
+            apply_sell(ledger, sym, sh)
+        else:
+            print("side must be buy or sell"); sys.exit(1)
+        ledger["orders"].append({"tool": "manual", "side": side, "symbol": sym, "usd": f"{sh * px:.2f}",
+                                 "filled_shares": f"{sh}", "fill_price": f"{px}", "state": "filled"})
+        recompute(ledger)
+        save_ledger(ledger)
+        print("ok")
+    elif cmd == "set-exposure":
+        ledger["exposure_usd"] = f"{Decimal(argv[1]):.2f}"
+        save_ledger(ledger)
+        print("ok (note: `status` after the next order recomputes from positions)")
+    elif cmd == "reset":
+        save_ledger({"exposure_usd": "0", "positions": {}, "orders": []})
+        print("ok")
+    else:
+        print(__doc__)
+        sys.exit(1)
+
+
 def main():
     if len(sys.argv) > 1:
-        cmd = sys.argv[1]
-        cap = load_cap()
-        ledger = load_ledger()
-        if cmd == "status":
-            exp = Decimal(str(ledger.get("exposure_usd", "0")))
-            print(f"cap ${cap:.2f} | exposure ${exp:.2f} | remaining ${cap - exp:.2f} | orders {len(ledger.get('orders', []))}")
-        elif cmd == "set-exposure":
-            ledger["exposure_usd"] = f"{Decimal(sys.argv[2]):.2f}"
-            save_ledger(ledger)
-            print("ok")
-        elif cmd == "reset":
-            save_ledger({"exposure_usd": "0", "orders": []})
-            print("ok")
-        else:
-            print(__doc__)
-            sys.exit(1)
+        cli(sys.argv[1:])
         return
 
     try:

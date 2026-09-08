@@ -23,7 +23,7 @@ Read all four at session start. Superseded and kept for reference only: `.claude
 8. **Owned positions** get exactly one status every session: HOLD, TRIM, SELL. Early failure rule applies, do not wait for the hard stop when a breakout fails.
 9. **Journal.** `tools/journal.py open|close|review|list` writes `trades.json`. One line per closed trade in `trades.md`. Post-win review on every winner. Track R multiples.
 10. **Halt** on 8% drawdown from equity high, 1.5% realized loss in one day, 3 consecutive losers, or when Coleman says stop. Resume only after a written review, at 0.50% risk until a winner confirms.
-11. Ledger corrections after a cancel or failed fill: `robinhood_cap.py set-exposure`.
+11. Ledger: exposure is the cost basis of open positions plus resting buys. A sell only reduces it when it fills. The hook never sees a later fill of a resting order, so after a stop fills or a resting buy fills, run `robinhood_cap.py fill SYMBOL buy|sell SHARES PRICE`. `set-exposure` overrides the total, `status` lists positions.
 12. Trading never appears in any income projection or business plan.
 
 Bull Bear Algo is not available through Robinhood. Manual input only.
