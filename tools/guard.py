@@ -92,8 +92,9 @@ def main():
     max_risk = equity * risk_pct
 
     # 6. buy signal
-    if f("score") < 85: reasons.append(f"BLOCKED — SCORE {f('score'):.0f} < 85")
-    if o["grade"] not in ("A", "A+"): reasons.append(f"BLOCKED — GRADE {o['grade']}")
+    # Grade floor B / score 75 per Coleman, 2026-09-09 (was A / 85).
+    if f("score") < 75: reasons.append(f"BLOCKED — SCORE {f('score'):.0f} < 75")
+    if o["grade"] not in ("A", "A+", "B"): reasons.append(f"BLOCKED — GRADE {o['grade']}")
     if not o["trend_template"]: reasons.append("BLOCKED — TREND TEMPLATE FAIL")
     if o["rs"].upper() != "STRONG": reasons.append("BLOCKED — RELATIVE STRENGTH NOT STRONG")
     if f("reward_risk") < 2: reasons.append(f"BLOCKED — REWARD/RISK {f('reward_risk'):.1f} < 2")

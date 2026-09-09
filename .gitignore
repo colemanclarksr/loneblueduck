@@ -55,3 +55,4 @@ shot-*.png
 .claude/guard-approval.json
 account.json
 order.json
+order_*.json

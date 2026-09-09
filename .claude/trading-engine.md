@@ -67,7 +67,7 @@ NEVER: average down, move stop lower, turn a momentum trade into a long-term inv
 Only add when: original position is profitable, stock proves itself, another valid low-risk entry develops, total account risk remains acceptable. Never add because the stock fell. PYRAMID INTO STRENGTH. NEVER PYRAMID INTO WEAKNESS.
 
 ## MARKET EXPOSURE
-GREEN: indexes healthy, breakouts working, existing positions profitable. Normal risk 0.75% equity. Allow new A/A+ setups.
+GREEN: indexes healthy, breakouts working, existing positions profitable. Normal risk 0.75% equity. Allow new B/A/A+ setups (grade floor lowered from A to B by Coleman, 2026-09-09; applies in YELLOW too).
 YELLOW: mixed market, breakouts inconsistent. Reduce new positions. Require exceptional setups. Risk 0.50% equity.
 RED: major indexes weak, breakouts repeatedly failing, existing positions triggering stops. NO NEW LONG POSITIONS. Raise cash. The account does not need to be invested.
 

@@ -19,10 +19,10 @@ NORMAL MAXIMUM PLANNED RISK: 0.75% of CURRENT ACCOUNT EQUITY. MAX_RISK = ACCOUNT
 Track account equity high. Drawdown <3%: risk 0.75%. 3–5%: 0.50%. 5–8%: 0.25%. >=8%: BLOCK ALL NEW POSITIONS. Existing positions may only be HOLD, TRIM, SELL.
 
 ## 5. MARKET OVERRIDE
-GREEN: new A/A+ positions permitted. YELLOW: only A/A+ positions, maximum risk 0.50%. RED: BLOCK NEW LONG POSITIONS. Do not override because an individual stock looks attractive.
+GREEN: new B/A/A+ positions permitted. YELLOW: B/A/A+ positions, maximum risk 0.50%. RED: BLOCK NEW LONG POSITIONS. (Grade floor lowered from A to B by Coleman, 2026-09-09.) Do not override because an individual stock looks attractive.
 
 ## 6. VALIDATE BUY SIGNAL
-Before accepting BUY confirm: Momentum Score >=85, Grade A or A+, Minervini Trend Template passes, relative strength STRONG, valid technical setup exists, specific pivot exists, technical stop exists, reward/risk >=2:1, earnings filter passes, market filter passes. If any mandatory condition fails: BLOCK BUY.
+Before accepting BUY confirm: Momentum Score >=75, Grade B or better (was 85 / A until 2026-09-09), Minervini Trend Template passes, relative strength STRONG, valid technical setup exists, specific pivot exists, technical stop exists, reward/risk >=2:1, earnings filter passes, market filter passes. If any mandatory condition fails: BLOCK BUY.
 
 ## 7. LIVE PIVOT CHECK
 EXTENSION = (CURRENT_PRICE - PIVOT) / PIVOT × 100. 0–2%: BUY permitted. 2–3%: only A+ setup. 3–5%: BLOCK BUY, return WATCH. >5%: BLOCK BUY, return EXTENDED — DO NOT CHASE. Never chase because the stock is moving rapidly.

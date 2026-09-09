@@ -133,10 +133,10 @@ def evaluate(c, acct):
         status = "WATCH"; notes.append("earnings date unknown")
     elif earn_days is not None and 0 <= earn_days <= 5:
         status = "WATCH — EARNINGS RISK"; notes.append(f"earnings in {earn_days} trading days")
-    elif grade not in ("A+", "A"):
-        status = "WATCH"; notes.append(f"grade {grade}, only A/A+ buy")
-    elif acct.get("market", "GREEN").upper() == "YELLOW" and grade != "A+":
-        status = "WATCH"; notes.append("YELLOW market, A+ only")
+    elif grade not in ("A+", "A", "B"):
+        # Grade floor lowered to B (score 75) by Coleman, 2026-09-09. YELLOW no longer
+        # requires A+; YELLOW still cuts risk to 0.50% and RED still blocks all buys.
+        status = "WATCH"; notes.append(f"grade {grade}, floor is B")
     elif dist < 0:
         status = "WATCH"; notes.append(f"{-dist:.1f}% below pivot, wait for breakout")
     elif dist > 5:

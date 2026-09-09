@@ -7,7 +7,7 @@ MISSION: Scan the U.S. stock market for the BEST current momentum opportunities.
 ## STEP 1 — MARKET REGIME
 Before scanning stocks, analyze SPY, QQQ, IWM: current price, 21 EMA, 50 SMA, 200 SMA, trend direction, recent distribution, breadth if available, breakout success/failure, volatility.
 GREEN: healthy environment for momentum longs. Normal scanning and new positions permitted.
-YELLOW: mixed/selective environment. Only A/A+ candidates advance.
+YELLOW: mixed/selective environment. B or better advances at 0.50% risk (floor lowered from A by Coleman, 2026-09-09).
 RED: unfavorable for new momentum longs. Do not recommend new long positions. Return: CASH / NO NEW LONGS.
 
 ## STEP 2 — UNIVERSE (amended by Coleman 2026-09-04)
@@ -40,7 +40,7 @@ Identify current catalysts when reliable data is available: earnings, guidance, 
 
 ## STEP 11 — MOMENTUM SCORE
 TREND QUALITY 20, RELATIVE STRENGTH 20, SETUP / VCP QUALITY 20, PRICE + VOLUME 15, FUNDAMENTALS 15, MARKET + SECTOR 10. Total 100.
-Grades: A+ = 90–100, A = 85–89, B = 75–84, C = 65–74, REJECT = below 65. Only A and A+ candidates normally qualify for actual purchase.
+Grades: A+ = 90–100, A = 85–89, B = 75–84, C = 65–74, REJECT = below 65. B and better qualify for purchase (floor lowered from A by Coleman, 2026-09-09).
 
 ## STEP 12 — RISK CALCULATION
 Base risk 0.75% of current account equity. For $1,000: MAX PLANNED LOSS = $7.50. For each candidate: entry, technical stop, risk/share, stop %, maximum shares based on risk, maximum shares based on buying power.
