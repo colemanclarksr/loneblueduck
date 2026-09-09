@@ -50,6 +50,7 @@ Do NOT sell merely because: stock gains 3%, stock gains 5%, stock has one red da
 1R = original risk per share. Example: Entry $25.00, Stop $23.75, Risk $1.25/share. 1R = $26.25, 2R = $27.50, 3R = $28.75, 4R = $30.00. Track every position in R multiples. The goal is for average winners to substantially exceed average losers.
 
 ## WINNER MANAGEMENT
+ONCE GREEN, NEVER RED (Coleman, 2026-09-09): a winner is not allowed to become a loser. Once a position has traded 1% above entry, raise the stop to the low of the breakout day. Once it has traded 2% above entry, raise the stop to breakeven (the entry price). Stops only move up, never down. This overrides the "do not take tiny profits" line below where the two conflict.
 0R to +1R: HOLD if technically healthy. Do not take tiny profits simply because the stock is green.
 +1R to +2R: HOLD strong stocks. Monitor price/volume behavior.
 +2R: Begin PROFIT PROTECTION MODE. Do not automatically sell. Consider moving stop upward if technically justified.

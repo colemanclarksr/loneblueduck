@@ -5,7 +5,7 @@
     "catalyst": "Oil over $99 on Iran conflict; energy leading group",
     "pullback_number": null,
     "entry_price": 95.29,
-    "stop_price": 90.0,
+    "stop_price": 94.35,
     "stop_method": "structure (10 day low 90.05)",
     "target_price": null,
     "position_size_pct_risk": 0.53,
@@ -27,6 +27,66 @@
       "trackable_variables": [],
       "one_sentence_setup_definition": ""
     },
-    "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m."
+    "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m. 9/9 2:22 ET: stop raised 90.00 -> 94.35 (breakout day low 94.42) under the once-green-never-red rule, order 6aa1a3cf. Next level: breakeven 95.29 once it trades 97.20 (+2%)."
+  },
+  {
+    "ticker": "EQNR",
+    "date": "2026-09-09",
+    "catalyst": "Brent near $100 after Houthi strikes on Saudi facilities; energy group leading",
+    "pullback_number": null,
+    "entry_price": 45.06,
+    "stop_price": 42.6,
+    "stop_method": "structure (under the 9/3 low 42.61)",
+    "target_price": null,
+    "position_size_pct_risk": 0.49,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "new 52w high 45.20",
+      "gap held all day while SPY fell",
+      "EPS +108% and +124%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": null,
+    "exit_reason": null,
+    "result_pct": null,
+    "post_win_review": {
+      "size_up_opportunity": "",
+      "matched_other_winners": "",
+      "ev_captured_pct": null,
+      "trackable_variables": [],
+      "one_sentence_setup_definition": ""
+    },
+    "notes": "Order 6aa1a347, 2 shares, limit 45.07 filled 45.0599 at 2:19:51 ET. Score 79 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 1.48x pace, just under the 1.5x line. 1R 47.52, 2R 49.98, 3R 52.44. Early failure: back under 44.33 on volume. Same headline risk as SHEL and ECO."
+  },
+  {
+    "ticker": "ECO",
+    "date": "2026-09-09",
+    "catalyst": "Tanker rates on the Iran and Saudi disruption; crude tanker group leading",
+    "pullback_number": null,
+    "entry_price": 72.12,
+    "stop_price": 67.4,
+    "stop_method": "structure (under the 9/2 low 67.46)",
+    "target_price": null,
+    "position_size_pct_risk": 0.47,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "1% off 52w high",
+      "EPS +611% and +547%",
+      "revenue beat by 45%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": null,
+    "exit_reason": null,
+    "result_pct": null,
+    "post_win_review": {
+      "size_up_opportunity": "",
+      "matched_other_winners": "",
+      "ev_captured_pct": null,
+      "trackable_variables": [],
+      "one_sentence_setup_definition": ""
+    },
+    "notes": "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR."
   }
 ]
