@@ -1,0 +1,6 @@
+{
+  "cap_usd": 1000,
+  "per_order_max_usd": 250,
+  "options_allowed": false,
+  "note": "Matches trading-engine.md: $1,000 cash account, no margin, normal position $200-250. Enforced by .claude/hooks/robinhood_cap.py. Change here and in the engine doc together."
+}

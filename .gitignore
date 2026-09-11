@@ -49,3 +49,10 @@ prisma/test.db*
 # local verification artifacts
 verify.mjs
 shot-*.png
+
+# trading sandbox state (per machine, never committed)
+.claude/robinhood-cap-ledger.json
+.claude/guard-approval.json
+account.json
+order.json
+order_*.json
