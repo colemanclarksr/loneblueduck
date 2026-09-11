@@ -65,7 +65,7 @@
   "catalyst": "Tanker rates on the Iran and Saudi disruption; crude tanker group leading",
   "pullback_number": null,
   "entry_price": 72.12,
-  "stop_price": 70.39,
+  "stop_price": 72.12,
   "stop_method": "structure (under the 9/2 low 67.46)",
   "target_price": null,
   "position_size_pct_risk": 0.47,
@@ -87,6 +87,6 @@
    "trackable_variables": [],
    "one_sentence_setup_definition": ""
   },
-  "notes": "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR. 9/10 12:02 ET: traded 72.90 (+1.1%), once-green-never-red, stop 67.40 -> 70.39 (9/9 breakout day low). Breakeven 72.12 at 73.56."
+  "notes": "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR. 9/10 12:02 ET: traded 72.90 (+1.1%), once-green-never-red, stop 67.40 -> 70.39 (9/9 breakout day low). Breakeven 72.12 at 73.56. 9/11 9:49 ET: traded 75.60 (+4.8%, +0.74R), stop raised 70.39 -> 72.12 breakeven under once-green-never-red, order 6aa406d1 (old 6aa2d477 cancelled). 1R 76.84, 2R 81.56."
  }
 ]
