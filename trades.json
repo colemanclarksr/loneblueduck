@@ -5,7 +5,7 @@
   "catalyst": "Oil over $99 on Iran conflict; energy leading group",
   "pullback_number": null,
   "entry_price": 95.29,
-  "stop_price": 94.35,
+  "stop_price": 95.29,
   "stop_method": "structure (10 day low 90.05)",
   "target_price": null,
   "position_size_pct_risk": 0.53,
@@ -27,7 +27,7 @@
    "trackable_variables": [],
    "one_sentence_setup_definition": ""
   },
-  "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m. 9/9 2:22 ET: stop raised 90.00 -> 94.35 (breakout day low 94.42) under the once-green-never-red rule, order 6aa1a3cf. Next level: breakeven 95.29 once it trades 97.20 (+2%)."
+  "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m. 9/9 2:22 ET: stop raised 90.00 -> 94.35 (breakout day low 94.42) under the once-green-never-red rule, order 6aa1a3cf. Next level: breakeven 95.29 once it trades 97.20 (+2%). 9/14 9:49 ET: traded 97.42 at the open (+2.2%, +2.06R), stop raised 94.35 -> 95.29 breakeven under once-green-never-red, order 6aa7fb86 (old 6aa1a3cf cancelled). 1R 96.23, 2R 97.17, 3R 98.11."
  },
  {
   "ticker": "EQNR",
