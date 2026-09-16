@@ -65,8 +65,8 @@
     "catalyst": "Tanker rates on the Iran and Saudi disruption; crude tanker group leading",
     "pullback_number": null,
     "entry_price": 72.12,
-    "stop_price": 74.38,
-    "stop_method": "structure (under the 9/2 low 67.46)",
+    "stop_price": 79.4,
+    "stop_method": "structure (under the 9/15 low 79.53), raised 9/16 open",
     "target_price": null,
     "position_size_pct_risk": 0.47,
     "num_entries_scaled": 1,
@@ -87,6 +87,9 @@
       "trackable_variables": [],
       "one_sentence_setup_definition": ""
     },
-    "notes": "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR. 9/10 12:02 ET: traded 72.90 (+1.1%), once-green-never-red, stop 67.40 -> 70.39 (9/9 breakout day low). Breakeven 72.12 at 73.56. 9/11 9:49 ET: traded 75.60 (+4.8%, +0.74R), stop raised 70.39 -> 72.12 breakeven under once-green-never-red, order 6aa406d1 (old 6aa2d477 cancelled). 1R 76.84, 2R 81.56. 9/14 close: high 80.46 new 52w high, closed ~79.60 (+4.5%, +1.58R on the original 4.72 risk). Est ~0.9M consolidated vs 0.51M avg. 2R at 81.56. HOLD, stop stays 72.12 breakeven (order 6aa406d1); profit protection mode starts at 2R. 9/15 9:48 ET: 81.30 (+2.0%, +1.94R), high 81.00 on the bars, 2R 81.56 not yet tagged. Stop stays 72.12 breakeven (order 6aa406d1). 9/15 12:01 ET: tagged 2R 81.56 at 9:50, high 83.27 (+2.36R), now 82.20 (+2.13R) on about 4x volume pace. Profit protection: stop raised 72.12 -> 74.38 under Monday's 74.38 low, locks +0.48R. Order 6aa96bda (6aa406d1 cancelled). Stops only up. 9/15 close: high 83.27, ~83.00 (+4.1%), +2.31R on ~1.1M est (2.2x avg), closed near the high. Stop stays 74.38 (order 6aa96bda). Next level under today's 79.53 low once 2R holds another session."
+    "notes": [
+      "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR. 9/10 12:02 ET: traded 72.90 (+1.1%), once-green-never-red, stop 67.40 -> 70.39 (9/9 breakout day low). Breakeven 72.12 at 73.56. 9/11 9:49 ET: traded 75.60 (+4.8%, +0.74R), stop raised 70.39 -> 72.12 breakeven under once-green-never-red, order 6aa406d1 (old 6aa2d477 cancelled). 1R 76.84, 2R 81.56. 9/14 close: high 80.46 new 52w high, closed ~79.60 (+4.5%, +1.58R on the original 4.72 risk). Est ~0.9M consolidated vs 0.51M avg. 2R at 81.56. HOLD, stop stays 72.12 breakeven (order 6aa406d1); profit protection mode starts at 2R. 9/15 9:48 ET: 81.30 (+2.0%, +1.94R), high 81.00 on the bars, 2R 81.56 not yet tagged. Stop stays 72.12 breakeven (order 6aa406d1). 9/15 12:01 ET: tagged 2R 81.56 at 9:50, high 83.27 (+2.36R), now 82.20 (+2.13R) on about 4x volume pace. Profit protection: stop raised 72.12 -> 74.38 under Monday's 74.38 low, locks +0.48R. Order 6aa96bda (6aa406d1 cancelled). Stops only up. 9/15 close: high 83.27, ~83.00 (+4.1%), +2.31R on ~1.1M est (2.2x avg), closed near the high. Stop stays 74.38 (order 6aa96bda). Next level under today's 79.53 low once 2R holds another session.",
+      "9/16 open (9:48 ET): raised stop 74.38 -> 79.40, just under the 9/15 low of 79.53, after 2R (81.54) held Tuesday's close of 82.73 and price extended to 84.62 (+2.65R). Locks +1.55R, up from +0.48R. Order 6aaa9e26-fb9b-48f6-beab-08a6053932a0; cancelled 6aa96bda-b337-4e58-a43a-5568313846db."
+    ]
   }
 ]
