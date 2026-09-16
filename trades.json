@@ -17,9 +17,9 @@
       "EPS +144%"
     ],
     "regime_ok_at_entry": true,
-    "exit_price": null,
-    "exit_reason": null,
-    "result_pct": null,
+    "exit_price": 96.63,
+    "exit_reason": "stop_hit",
+    "result_pct": 1.41,
     "post_win_review": {
       "size_up_opportunity": "",
       "matched_other_winners": "",
