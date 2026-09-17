@@ -21,11 +21,17 @@
     "exit_reason": "stop_hit",
     "result_pct": 1.41,
     "post_win_review": {
-      "size_up_opportunity": "",
-      "matched_other_winners": "",
-      "ev_captured_pct": null,
-      "trackable_variables": [],
-      "one_sentence_setup_definition": ""
+      "size_up_opportunity": "No. 1 share at 95.29 was $95.29 of a $1,000 sandbox, already 9.4% of equity, and the risk budget at 0.75% of ~$1,014 was $7.61 against $0.94 of risk per share. Eight shares would have fit the risk math but $762 of cost basis blows the $250 per-order hook cap and 75% of equity blows the 25% concentration gate. The cap, not the setup, sized this trade. Nothing to change.",
+      "matched_other_winners": "Yes, and it matches ECO exactly: large-cap energy, breakout above a flat base, volume confirmed, bought inside 2% of the pivot, then trailed on the once-green-never-red ladder. Both winners so far came from the energy complex in a market where the indexes were under their moving averages. That is one observation twice, not an edge yet, but it is the pattern to watch.",
+      "ev_captured_pct": 37,
+      "trackable_variables": [
+        "R at peak vs R at exit (SHEL peaked +3.90R, exited +1.43R, captured 37%)",
+        "Stop distance as a percent of the name's recent 3-day average daily range at the moment of each raise",
+        "Whether the stop that got hit was the ORIGINAL stop or a raised one, and how many raises preceded the exit",
+        "Sector of every winner and loser, to catch concentration masquerading as edge",
+        "Days held from entry to exit"
+      ],
+      "one_sentence_setup_definition": "Large-cap energy breaking out of a flat base on confirmed volume, bought within 2% of the pivot with a 3-8% stop, then trailed up the once-green-never-red ladder and never widened."
     },
     "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m. 9/9 2:22 ET: stop raised 90.00 -> 94.35 (breakout day low 94.42) under the once-green-never-red rule, order 6aa1a3cf. Next level: breakeven 95.29 once it trades 97.20 (+2%). 9/14 9:49 ET: traded 97.42 at the open (+2.2%, +2.06R), stop raised 94.35 -> 95.29 breakeven under once-green-never-red, order 6aa7fb86 (old 6aa1a3cf cancelled). 1R 96.23, 2R 97.17, 3R 98.11. 9/14 close: opened 97.38, high 97.61, closed ~96.15 (-0.6%, +0.91R). Reversal off the high on ~5.4M est (0.8x avg). Low 96.08 held well above the 95.29 breakeven stop. HOLD, stop stays 95.29 (order 6aa7fb86). 9/15 9:48 ET: traded 97.84 at the open (+2.7%, +2.71R), new high over Monday's 97.63. Profit protection mode past 2R: stop raised 95.29 -> 96.08 under Monday's 96.085 low, locks +0.84R. Order 6aa94cdd (old 6aa7fb86 cancelled). Stops only up. 9/15 12:01 ET: 98.57 (+2.2%), high 98.805, +3.49R on about 1.2x volume pace. Past 3R the engine wants increased protection: stop raised 96.08 -> 96.63 under today's 96.63 low, locks +1.43R. Order 6aa96bd8 (6aa94cdd cancelled). 9/15 close: high 99.16, ~98.83 (+2.5%), +3.77R on ~4.3M est (0.7x avg), quiet trend day. Stop stays 96.63 (order 6aa96bd8)."
   },
