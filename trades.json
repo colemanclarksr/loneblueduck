@@ -112,9 +112,9 @@
     "num_entries_scaled": 1,
     "indicator_confluence": "trend template pass, RS strong (18.4% over its 50 SMA), grade B score 80, spread 0.27%, avg $ volume $385M, rel volume 1.10, extension +1.17% from pivot at entry",
     "regime_ok_at_entry": true,
-    "exit_price": null,
-    "exit_reason": null,
-    "result_pct": null,
+    "exit_price": 55.0701,
+    "exit_reason": "discretionary",
+    "result_pct": -0.42,
     "post_win_review": {
       "size_up_opportunity": "",
       "matched_other_winners": "",
