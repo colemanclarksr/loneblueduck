@@ -83,9 +83,9 @@
       "revenue beat by 45%"
     ],
     "regime_ok_at_entry": true,
-    "exit_price": null,
-    "exit_reason": null,
-    "result_pct": null,
+    "exit_price": 82.445,
+    "exit_reason": "stop_hit",
+    "result_pct": 14.32,
     "post_win_review": {
       "size_up_opportunity": "",
       "matched_other_winners": "",
