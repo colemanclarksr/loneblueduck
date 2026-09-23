@@ -1,0 +1,134 @@
+[
+  {
+    "ticker": "SHEL",
+    "date": "2026-09-08",
+    "catalyst": "Oil over $99 on Iran conflict; energy leading group",
+    "pullback_number": null,
+    "entry_price": 95.29,
+    "stop_price": 96.63,
+    "stop_method": "structure (10 day low 90.05)",
+    "target_price": null,
+    "position_size_pct_risk": 0.53,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "new 52w high",
+      "2.0x volume pace",
+      "EPS +144%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": 96.63,
+    "exit_reason": "stop_hit",
+    "result_pct": 1.41,
+    "post_win_review": {
+      "size_up_opportunity": "No. 1 share at 95.29 was $95.29 of a $1,000 sandbox, already 9.4% of equity, and the risk budget at 0.75% of ~$1,014 was $7.61 against $0.94 of risk per share. Eight shares would have fit the risk math but $762 of cost basis blows the $250 per-order hook cap and 75% of equity blows the 25% concentration gate. The cap, not the setup, sized this trade. Nothing to change.",
+      "matched_other_winners": "Yes, and it matches ECO exactly: large-cap energy, breakout above a flat base, volume confirmed, bought inside 2% of the pivot, then trailed on the once-green-never-red ladder. Both winners so far came from the energy complex in a market where the indexes were under their moving averages. That is one observation twice, not an edge yet, but it is the pattern to watch.",
+      "ev_captured_pct": 37,
+      "trackable_variables": [
+        "R at peak vs R at exit (SHEL peaked +3.90R, exited +1.43R, captured 37%)",
+        "Stop distance as a percent of the name's recent 3-day average daily range at the moment of each raise",
+        "Whether the stop that got hit was the ORIGINAL stop or a raised one, and how many raises preceded the exit",
+        "Sector of every winner and loser, to catch concentration masquerading as edge",
+        "Days held from entry to exit"
+      ],
+      "one_sentence_setup_definition": "Large-cap energy breaking out of a flat base on confirmed volume, bought within 2% of the pivot with a 3-8% stop, then trailed up the once-green-never-red ladder and never widened."
+    },
+    "notes": "Order 6aa02215, 1 share, limit 95.45 filled 95.2874 at 10:56:21 ET. Score 85 grade A, guard approved. 1R 100.58, 2R 105.87, 3R 111.16. Early failure rule: sell if back inside base under 94.00 on heavy volume. RS soft spot: lagged SPY over 6m. 9/9 2:22 ET: stop raised 90.00 -> 94.35 (breakout day low 94.42) under the once-green-never-red rule, order 6aa1a3cf. Next level: breakeven 95.29 once it trades 97.20 (+2%). 9/14 9:49 ET: traded 97.42 at the open (+2.2%, +2.06R), stop raised 94.35 -> 95.29 breakeven under once-green-never-red, order 6aa7fb86 (old 6aa1a3cf cancelled). 1R 96.23, 2R 97.17, 3R 98.11. 9/14 close: opened 97.38, high 97.61, closed ~96.15 (-0.6%, +0.91R). Reversal off the high on ~5.4M est (0.8x avg). Low 96.08 held well above the 95.29 breakeven stop. HOLD, stop stays 95.29 (order 6aa7fb86). 9/15 9:48 ET: traded 97.84 at the open (+2.7%, +2.71R), new high over Monday's 97.63. Profit protection mode past 2R: stop raised 95.29 -> 96.08 under Monday's 96.085 low, locks +0.84R. Order 6aa94cdd (old 6aa7fb86 cancelled). Stops only up. 9/15 12:01 ET: 98.57 (+2.2%), high 98.805, +3.49R on about 1.2x volume pace. Past 3R the engine wants increased protection: stop raised 96.08 -> 96.63 under today's 96.63 low, locks +1.43R. Order 6aa96bd8 (6aa94cdd cancelled). 9/15 close: high 99.16, ~98.83 (+2.5%), +3.77R on ~4.3M est (0.7x avg), quiet trend day. Stop stays 96.63 (order 6aa96bd8)."
+  },
+  {
+    "ticker": "EQNR",
+    "date": "2026-09-09",
+    "catalyst": "Brent near $100 after Houthi strikes on Saudi facilities; energy group leading",
+    "pullback_number": null,
+    "entry_price": 45.06,
+    "stop_price": 44.7,
+    "stop_method": "structure (under the 9/3 low 42.61)",
+    "target_price": null,
+    "position_size_pct_risk": 0.49,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "new 52w high 45.20",
+      "gap held all day while SPY fell",
+      "EPS +108% and +124%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": 44.65,
+    "exit_reason": "stop_hit",
+    "result_pct": -0.91,
+    "post_win_review": {
+      "size_up_opportunity": "",
+      "matched_other_winners": "",
+      "ev_captured_pct": null,
+      "trackable_variables": [],
+      "one_sentence_setup_definition": ""
+    },
+    "notes": "Order 6aa1a347, 2 shares, limit 45.07 filled 45.0599 at 2:19:51 ET. Score 79 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 1.48x pace, just under the 1.5x line. 1R 47.52, 2R 49.98, 3R 52.44. Early failure: back under 44.33 on volume. Same headline risk as SHEL and ECO. 9/10 9:48 ET: traded 45.545 (+1.1%), once-green-never-red, stop 42.60 -> 44.70 (9/9 breakout day low). Breakeven 45.06 at 45.96."
+  },
+  {
+    "ticker": "ECO",
+    "date": "2026-09-09",
+    "catalyst": "Tanker rates on the Iran and Saudi disruption; crude tanker group leading",
+    "pullback_number": null,
+    "entry_price": 72.12,
+    "stop_price": 82.4,
+    "stop_method": "structure (under today's 9/16 low of 82.60), raised 2:45 ET for the overnight hold",
+    "target_price": null,
+    "position_size_pct_risk": 0.47,
+    "num_entries_scaled": 1,
+    "indicator_confluence": [
+      "trend template",
+      "1% off 52w high",
+      "EPS +611% and +547%",
+      "revenue beat by 45%"
+    ],
+    "regime_ok_at_entry": true,
+    "exit_price": 82.445,
+    "exit_reason": "stop_hit",
+    "result_pct": 14.32,
+    "post_win_review": {
+      "size_up_opportunity": "No. 1 share was the maximum the rules allowed, and the binding constraint was risk, not the $250 order cap. Entry 72.1249 with the original 67.40 structure stop put 1R at 4.7249. The 0.75% budget on $1,010 equity is $7.50, so RISK_SHARES = floor(7.50 / 4.7249) = 1. The cap would have permitted 3 shares ($216). The only way to have carried more was a tighter stop, which the engine forbids, so there was no legitimate size-up here. The real lesson is the reverse: a 6.5% stop on a $72 stock is structurally a 1-share trade at this account size, and that is the cost of trading a high-priced name in a $1,000 sandbox. Cheaper stocks with the same setup quality carry more shares for the same dollar risk.",
+      "matched_other_winners": "It matched the textbook leadership profile, not an internal pattern yet. Sample is too small to claim a repeatable edge: 4 closed trades, and ECO is the only one that produced real R. What it shared with the ideal is stacked: trend template pass, within 1% of the 52-week high, EPS +611% and +547% in consecutive quarters, revenue beat by 45%, and the strongest name in a group (crude tankers) that was moving on a live macro catalyst. What it did NOT share with the rulebook's ideal is just as important: volume was 0.87x pace and never confirmed at entry, the base was 17% deep, and price was 9% above the 21 EMA. Three marks against it, and it still returned +2.18R. That combination is the thing to watch, not to generalize from yet.",
+      "ev_captured_pct": 72.6,
+      "trackable_variables": [
+        "Volume NOT confirmed at entry (0.87x pace) yet the trade worked. Track whether unconfirmed-volume entries in a group-leading name perform differently from confirmed ones. If they do not, the volume gate is costing trades.",
+        "Group catalyst vs single-stock catalyst. ECO moved on a sector-wide macro event (tanker rates on the Iran and Saudi disruption), so the whole group carried it. Track whether group-catalyst entries hold longer than single-stock-news entries.",
+        "Give-back from peak. Peak was 86.34 (+3.01R), exit 82.445 (+2.18R), so the trail gave back 0.83R, about 27% of the open profit. Track give-back on every winner. If it averages more than 0.75R, the trail is too loose for names with 5-8% daily ranges.",
+        "Stop-ratchet count. Five raises: 67.40 -> 70.39 -> 72.12 -> 74.38 -> 79.40 -> 82.40. Track raises per winner and whether the stop that eventually fires was a structure level or a round-number guess. Every one of these was a structure level, and the one that fired was a real failure signal.",
+        "Gap-through fills. The 82.40 stop filled at 82.445 in the first five seconds of 9/21, then ECO rallied to 85.48 the same morning. Track how often a GTC stop fills on an opening gap that immediately reverses. If it is common, the trail may need to sit under a level that opening noise does not reach.",
+        "Base depth at entry (17%) and distance above the 21 EMA at entry (9%). Both were outside the ideal. Log them on every trade so there is eventually data on whether they predict anything."
+      ],
+      "one_sentence_setup_definition": "Buy the leading stock of a group that is moving on a fresh macro catalyst when it is within 1% of its 52-week high with two consecutive quarters of triple-digit EPS acceleration, take the entry even without volume confirmation, and hold it with a structure stop that only ever moves up."
+    },
+    "notes": [
+      "Order 6aa1a353, 1 share, limit 72.21 filled 72.1249 at 2:20:03 ET. Score 78 grade B under the new B floor (Coleman 2026-09-09). Guard approved. Volume 0.87x pace, not confirmed. Base 17% deep, 9% above 21 EMA. 1R 76.84, 2R 81.56, 3R 86.28. Early failure: back under 70.40 (today's low) on volume. Same headline risk as SHEL and EQNR. 9/10 12:02 ET: traded 72.90 (+1.1%), once-green-never-red, stop 67.40 -> 70.39 (9/9 breakout day low). Breakeven 72.12 at 73.56. 9/11 9:49 ET: traded 75.60 (+4.8%, +0.74R), stop raised 70.39 -> 72.12 breakeven under once-green-never-red, order 6aa406d1 (old 6aa2d477 cancelled). 1R 76.84, 2R 81.56. 9/14 close: high 80.46 new 52w high, closed ~79.60 (+4.5%, +1.58R on the original 4.72 risk). Est ~0.9M consolidated vs 0.51M avg. 2R at 81.56. HOLD, stop stays 72.12 breakeven (order 6aa406d1); profit protection mode starts at 2R. 9/15 9:48 ET: 81.30 (+2.0%, +1.94R), high 81.00 on the bars, 2R 81.56 not yet tagged. Stop stays 72.12 breakeven (order 6aa406d1). 9/15 12:01 ET: tagged 2R 81.56 at 9:50, high 83.27 (+2.36R), now 82.20 (+2.13R) on about 4x volume pace. Profit protection: stop raised 72.12 -> 74.38 under Monday's 74.38 low, locks +0.48R. Order 6aa96bda (6aa406d1 cancelled). Stops only up. 9/15 close: high 83.27, ~83.00 (+4.1%), +2.31R on ~1.1M est (2.2x avg), closed near the high. Stop stays 74.38 (order 6aa96bda). Next level under today's 79.53 low once 2R holds another session.",
+      "9/16 open (9:48 ET): raised stop 74.38 -> 79.40, just under the 9/15 low of 79.53, after 2R (81.54) held Tuesday's close of 82.73 and price extended to 84.62 (+2.65R). Locks +1.55R, up from +0.48R. Order 6aaa9e26-fb9b-48f6-beab-08a6053932a0; cancelled 6aa96bda-b337-4e58-a43a-5568313846db.",
+      "9/16 2:45 ET: raised stop 79.40 -> 82.40 for the overnight hold, just under today's low of 82.60 which was the opening gap-fill test of the 9/15 close (82.73) and held all session. ECO 86.34 = +3.02R; the stop now locks +2.18R, up from +1.55R. Chose today's low over the 10:30 higher low of 85.00: a stop under 85.00 would lock +2.69R but sits only 1.8% below price on a name whose last three daily ranges were 4.7%, 8.2% and 5.5% \u2014 it would be taken out by an ordinary down day. 82.40 is 4.6% away, inside one daily range, and a break of it would end a five-session up streak, which is a real failure signal rather than noise. Order 6aaae404-5ab2-4a74-902e-627afd7e7c42; cancelled 6aaa9e26-fb9b-48f6-beab-08a6053932a0."
+    ]
+  },
+  {
+    "ticker": "DT",
+    "date": "2026-09-18",
+    "catalyst": "Flat base breakout confirmed on Thursday's close at 55.83, +1.81% over the 54.84 pivot. Seven consecutive earnings beats, most recently 0.48 vs 0.41 estimate on 2026-08-05. Gapped to 57.33 premarket Friday, faded back into the 0-2% buy zone.",
+    "pullback_number": 1,
+    "entry_price": 55.2999,
+    "stop_price": 53.82,
+    "stop_method": "structure, ~1.8% under the 54.84 pivot so a failed-and-recovered breakout survives but a real breakdown exits; 2.68% below the fill",
+    "target_price": 58.26,
+    "position_size_pct_risk": 0.44,
+    "num_entries_scaled": 1,
+    "indicator_confluence": "trend template pass, RS strong (18.4% over its 50 SMA), grade B score 80, spread 0.27%, avg $ volume $385M, rel volume 1.10, extension +1.17% from pivot at entry",
+    "regime_ok_at_entry": true,
+    "exit_price": 55.0701,
+    "exit_reason": "discretionary",
+    "result_pct": -0.42,
+    "post_win_review": {
+      "size_up_opportunity": "",
+      "matched_other_winners": "",
+      "ev_captured_pct": null,
+      "trackable_variables": [],
+      "one_sentence_setup_definition": ""
+    },
+    "notes": "YELLOW regime, risk 0.50% = $5.07 budget, actual risk $4.44 on 3 shares. Guard APPROVED 13:37 UTC, Coleman approved explicitly. Filled 55.2999 vs 55.50 limit. GTC stop 53.82 order 6aad3f09 confirmed. The only name on the week's boards that broke out on an actual CLOSE rather than a premarket gap."
+  }
+]
