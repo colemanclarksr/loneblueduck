@@ -7,7 +7,7 @@ MISSION: Scan the U.S. stock market for the BEST current momentum opportunities.
 ## STEP 1 — MARKET REGIME
 Before scanning stocks, analyze SPY, QQQ, IWM: current price, 21 EMA, 50 SMA, 200 SMA, trend direction, recent distribution, breadth if available, breakout success/failure, volatility.
 GREEN: healthy environment for momentum longs. Normal scanning and new positions permitted.
-YELLOW: mixed/selective environment. B or better advances at 0.50% risk (floor lowered from A by Coleman, 2026-09-09).
+YELLOW: mixed/selective environment. B or better advances at two thirds of the risk base, $33.33 (floor lowered from A by Coleman, 2026-09-09; risk base set to $50 by Coleman, 2026-09-23).
 RED: unfavorable for new momentum longs. Do not recommend new long positions. Return: CASH / NO NEW LONGS.
 
 ## STEP 2 — UNIVERSE (amended by Coleman 2026-09-04)
@@ -43,8 +43,8 @@ TREND QUALITY 20, RELATIVE STRENGTH 20, SETUP / VCP QUALITY 20, PRICE + VOLUME 1
 Grades: A+ = 90–100, A = 85–89, B = 75–84, C = 65–74, REJECT = below 65. B and better qualify for purchase (floor lowered from A by Coleman, 2026-09-09).
 
 ## STEP 12 — RISK CALCULATION
-Base risk 0.75% of current account equity. For $1,000: MAX PLANNED LOSS = $7.50. For each candidate: entry, technical stop, risk/share, stop %, maximum shares based on risk, maximum shares based on buying power.
-RISK/SHARE = ENTRY - STOP. RISK SHARES = floor($7.50 / RISK PER SHARE). CAPITAL SHARES = floor(AVAILABLE CASH / ENTRY). FINAL MAXIMUM = min(RISK SHARES, CAPITAL SHARES). Never manipulate the stop to increase position size.
+Base risk flat $50 (Coleman, 2026-09-23), cut to $33.33 in YELLOW or 3-5% drawdown and $16.67 at 5-8%. For each candidate: entry, technical stop, risk/share, stop %, maximum shares based on risk, maximum shares based on buying power.
+RISK/SHARE = ENTRY - STOP. RISK SHARES = floor(MAX RISK / RISK PER SHARE). CAPITAL SHARES = floor(AVAILABLE CASH / ENTRY). FINAL MAXIMUM = min(RISK SHARES, CAPITAL SHARES). Never manipulate the stop to increase position size.
 
 ## STEP 13 — REWARD/RISK
 Calculate 1R, 2R, 3R. Do NOT manufacture arbitrary price targets simply to produce attractive reward/risk. Evaluate whether chart structure provides sufficient room to reasonably achieve at least 2R. Reject poor asymmetric opportunities.

@@ -68,28 +68,32 @@ def main():
     # 3-4. risk and drawdown
     equity, cash, bp, hi = f("equity"), f("cash"), f("buying_power"), f("equity_high")
     dd = (hi - equity) / hi * 100 if hi > 0 else 0.0
-    risk_pct = 0.0075
+    # Base risk changed from 0.75% of equity to a flat $50 by Coleman, 2026-09-23.
+    # The reduction ladder is preserved as multipliers of the base, same ratios as before.
+    risk_base_usd = 50.0
+    risk_mult = 1.0
     if dd >= 8:
         reasons.append(f"BLOCKED — DRAWDOWN LIMIT: {dd:.1f}% from equity high")
     elif dd >= 5:
-        risk_pct = 0.0025
+        risk_mult = 1 / 3
     elif dd >= 3:
-        risk_pct = 0.005
+        risk_mult = 2 / 3
     # 5. market
     mkt = o["market"].upper()
     if mkt == "RED":
         reasons.append("BLOCKED — RED MARKET")
     elif mkt == "YELLOW":
-        risk_pct = min(risk_pct, 0.005)
+        risk_mult = min(risk_mult, 2 / 3)
     # 21-22. kill switches
     if f("daily_realized_pnl") <= -0.015 * equity:
         reasons.append(f"BLOCKED — DAILY KILL SWITCH: realized {f('daily_realized_pnl'):.2f} today")
     if int(o["consecutive_losses"]) >= 3:
         if o.get("streak_cleared_by_coleman"):
-            risk_pct = min(risk_pct, 0.005)
+            risk_mult = min(risk_mult, 2 / 3)
         else:
             reasons.append("BLOCKED — 3 CONSECUTIVE LOSSES: re-evaluate before resuming")
-    max_risk = equity * risk_pct
+    risk_pct = risk_base_usd * risk_mult / equity if equity else 0.0
+    max_risk = risk_base_usd * risk_mult
 
     # 6. buy signal
     # Grade floor B / score 75 per Coleman, 2026-09-09 (was A / 85).
@@ -135,7 +139,11 @@ def main():
     if stop_pct > 8: reasons.append(f"BLOCKED — RISK TOO HIGH: stop {stop_pct:.1f}% > 8%")
     pos_val = shares * entry
     if pos_val > min(cash, bp): reasons.append("BLOCKED — INSUFFICIENT BUYING POWER")
-    if pos_val > 0.25 * equity: reasons.append(f"BLOCKED — CONCENTRATION: {pos_val/equity*100:.0f}% of equity > 25%")
+    if pos_val > 0.25 * equity:
+        reasons.append(
+            f"BLOCKED — CONCENTRATION: {pos_val/equity*100:.0f}% of equity > 25% "
+            f"(position cap ${0.25*equity:.2f} means max reachable risk is "
+            f"${0.25*equity*stop_pct/100:.2f} at this {stop_pct:.1f}% stop)")
 
     # 12, 23. duplicates and averaging down
     t = o["ticker"].upper()

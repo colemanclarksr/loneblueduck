@@ -7,7 +7,7 @@ STRATEGY: SEPA / VCP momentum swing trading inspired by Mark Minervini.
 PRIMARY GOAL: Compound capital by buying leading stocks at low-risk entry points, cutting losses quickly, and allowing strong winners to become meaningfully larger than average losers. Never trade merely to stay active. CASH IS A POSITION.
 
 ## ACCOUNT RISK
-BASE RISK PER TRADE: 0.75% of CURRENT account equity. At $1,000: MAXIMUM PLANNED LOSS = $7.50. As account equity changes, recalculate automatically ($1,100 = $8.25, $1,250 = $9.38, $1,500 = $11.25, $2,000 = $15.00). Never increase risk simply because a trade appears certain.
+BASE RISK PER TRADE: flat $50 (Coleman, 2026-09-23; was 0.75% of equity, $7.58 at $1,010). The reduction ladder still applies as multipliers of that base: drawdown 3-5% or YELLOW market = two thirds ($33.33), drawdown 5-8% = one third ($16.67), drawdown >=8% = blocked. Never increase risk simply because a trade appears certain. NOTE: the 25%-of-equity concentration cap binds before $50 does at this account size — see section 21.
 
 ## POSITION SIZE
 The chart determines the stop FIRST. Then calculate position size.
@@ -18,7 +18,7 @@ FINAL SHARES = floor(min(RISK-BASED SHARES, CAPITAL-BASED SHARES))
 Never use margin. Never average down.
 
 ## NORMAL POSITION SIZE
-Preferred initial position: approximately 20–25% of account equity. For $1,000: $200–$250. Exceptional setup may justify a larger position ONLY when the technical stop allows account risk to remain within the $7.50 risk budget. Do not distort the stop just to obtain a larger position.
+Preferred initial position: approximately 20–25% of account equity. For $1,000: $200–$250. Exceptional setup may justify a larger position ONLY when the technical stop allows account risk to remain within the risk budget. Do not distort the stop just to obtain a larger position. At $1,010 equity the 25% cap is $252, so with a legal 3-8% stop the most that can actually be risked on one order is $7.57 to $20.20 regardless of the $50 budget.
 
 ## BUY
 Return BUY only when the stock meets the required momentum criteria AND is currently at a valid entry.
@@ -68,15 +68,15 @@ NEVER: average down, move stop lower, turn a momentum trade into a long-term inv
 Only add when: original position is profitable, stock proves itself, another valid low-risk entry develops, total account risk remains acceptable. Never add because the stock fell. PYRAMID INTO STRENGTH. NEVER PYRAMID INTO WEAKNESS.
 
 ## MARKET EXPOSURE
-GREEN: indexes healthy, breakouts working, existing positions profitable. Normal risk 0.75% equity. Allow new B/A/A+ setups (grade floor lowered from A to B by Coleman, 2026-09-09; applies in YELLOW too).
-YELLOW: mixed market, breakouts inconsistent. Reduce new positions. Require exceptional setups. Risk 0.50% equity.
+GREEN: indexes healthy, breakouts working, existing positions profitable. Full $50 risk base. Allow new B/A/A+ setups (grade floor lowered from A to B by Coleman, 2026-09-09; applies in YELLOW too).
+YELLOW: mixed market, breakouts inconsistent. Reduce new positions. Require exceptional setups. Risk two thirds of base ($33.33).
 RED: major indexes weak, breakouts repeatedly failing, existing positions triggering stops. NO NEW LONG POSITIONS. Raise cash. The account does not need to be invested.
 
 ## PROGRESSIVE EXPOSURE
 Increase exposure only after the market proves the strategy is working. If recent trades are failing: TRADE SMALLER. If multiple positions are working: allow normal exposure. Never respond to losses by increasing position size.
 
 ## DRAWDOWN PROTECTION
-If account falls 3% from equity high: reduce risk to 0.50%.
+If account falls 3% from equity high: reduce risk to two thirds of base ($33.33).
 If account falls 5%: reduce risk to 0.25%.
 If account falls 8%: STOP NEW LIVE TRADES. Review strategy and recent trades before resuming.
 Never revenge trade.

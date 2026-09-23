@@ -13,13 +13,13 @@ DEFAULT ACTION = DO NOTHING. An order is permitted only after every required saf
 Immediately before every order retrieve fresh: current account equity, cash available, buying power, current positions, open orders, current bid, current ask, last price, current volume, pivot, technical stop, next earnings date, market status. Never rely solely on the scanner's earlier quote.
 
 ## 3. ACCOUNT RISK
-NORMAL MAXIMUM PLANNED RISK: 0.75% of CURRENT ACCOUNT EQUITY. MAX_RISK = ACCOUNT_EQUITY × 0.0075 ($1,000 = $7.50, $900 = $6.75, $1,100 = $8.25, $1,500 = $11.25). Risk must scale with CURRENT equity, not original equity.
+NORMAL MAXIMUM PLANNED RISK: flat $50 (Coleman, 2026-09-23; was 0.75% of equity). MAX_RISK = $50 × REDUCTION_MULTIPLIER. The multiplier is 1.0 normally, two thirds at 3-5% drawdown or in a YELLOW market, one third at 5-8% drawdown. At or beyond 8% drawdown all new positions are blocked. The 25%-of-equity concentration cap in section 10 binds before $50 does at current account size.
 
 ## 4. DRAWDOWN RISK OVERRIDE
-Track account equity high. Drawdown <3%: risk 0.75%. 3–5%: 0.50%. 5–8%: 0.25%. >=8%: BLOCK ALL NEW POSITIONS. Existing positions may only be HOLD, TRIM, SELL.
+Track account equity high. Drawdown <3%: full $50. 3–5%: $33.33. 5–8%: $16.67. >=8%: BLOCK ALL NEW POSITIONS. Existing positions may only be HOLD, TRIM, SELL.
 
 ## 5. MARKET OVERRIDE
-GREEN: new B/A/A+ positions permitted. YELLOW: B/A/A+ positions, maximum risk 0.50%. RED: BLOCK NEW LONG POSITIONS. (Grade floor lowered from A to B by Coleman, 2026-09-09.) Do not override because an individual stock looks attractive.
+GREEN: new B/A/A+ positions permitted. YELLOW: B/A/A+ positions, maximum risk two thirds of base ($33.33). RED: BLOCK NEW LONG POSITIONS. (Grade floor lowered from A to B by Coleman, 2026-09-09.) Do not override because an individual stock looks attractive.
 
 ## 6. VALIDATE BUY SIGNAL
 Before accepting BUY confirm: Momentum Score >=75, Grade B or better (was 85 / A until 2026-09-09), Minervini Trend Template passes, relative strength STRONG, valid technical setup exists, specific pivot exists, technical stop exists, reward/risk >=2:1, earnings filter passes, market filter passes. If any mandatory condition fails: BLOCK BUY.
@@ -70,7 +70,7 @@ SELL overrides BUY/HOLD when hard stop triggers, technical setup fails, breakout
 If realized losses for one trading day reach 1.5% of account equity ($15 at $1,000): BLOCK ALL NEW BUYS FOR THE REST OF THE DAY. Existing positions may still be reduced or sold. Never revenge trade.
 
 ## 22. CONSECUTIVE LOSS RULE
-After 3 consecutive losing trades: BLOCK new trades temporarily. Re-evaluate market regime, recent setups, entry quality, breakout success rate, execution, average loss, average winner. Resume at reduced 0.50% account risk until a profitable trade confirms improved conditions.
+After 3 consecutive losing trades: BLOCK new trades temporarily. Re-evaluate market regime, recent setups, entry quality, breakout success rate, execution, average loss, average winner. Resume at two thirds of base ($33.33) until a profitable trade confirms improved conditions.
 
 ## 23. NO AVERAGING DOWN
 ABSOLUTE RULE: if position price falls below entry, DO NOT ADD BECAUSE PRICE IS CHEAPER. Additional purchases require the existing trade working, a new valid setup, a separate low-risk entry, and total portfolio risk within limits.
